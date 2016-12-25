@@ -1,27 +1,22 @@
-using System;
-using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 
 namespace MinChain
 {
+    // Taken from https://msdn.microsoft.com/magazine/mt694089.aspx
+    public static class Logging
+    {
+        public static ILoggerFactory Factory { get; } = new LoggerFactory();
+        public static ILogger Logger<T>() => Factory.CreateLogger<T>();
+    }
+
     public class Program
     {
+        static readonly ILogger logger = Logging.Logger<Program>();
+
         public static void Main(string[] args)
         {
-            ECPoint publicKey;
-            byte[] privateKey;
-            EccService.GenerateKey(out privateKey, out publicKey);
-
-
-            Console.WriteLine(HexConvert.FromBytes(privateKey));
-            Console.WriteLine(HexConvert.FromBytes(publicKey.X));
-            Console.WriteLine(HexConvert.FromBytes(publicKey.Y));
-
-            var hash = Hash.ComputeDoubleSHA256(new byte[] { 1, 2, 3 });
-            var signature = EccService.Sign(hash, privateKey, publicKey);
-            Console.WriteLine(HexConvert.FromBytes(signature));
-
-            var verified = EccService.Verify(hash, signature, publicKey);
-            Console.WriteLine(verified);
+            Logging.Factory.AddConsole(LogLevel.Debug);
+            logger.LogInformation("Hello world!");
         }
     }
 }
