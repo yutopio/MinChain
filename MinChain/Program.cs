@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using System;
+using System.Net;
 
 namespace MinChain
 {
@@ -11,12 +13,19 @@ namespace MinChain
 
     public class Program
     {
-        static readonly ILogger logger = Logging.Logger<Program>();
+        static ConnectionManager connectionManager;
 
         public static void Main(string[] args)
         {
             Logging.Factory.AddConsole(LogLevel.Debug);
-            logger.LogInformation("Hello world!");
+
+            connectionManager = new ConnectionManager();
+            connectionManager.Start(
+                new IPEndPoint(IPAddress.Any, int.Parse(args[0])));
+
+            Console.ReadLine();
+
+            connectionManager.Dispose();
         }
     }
 }
