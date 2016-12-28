@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
 using System;
-using System.Net;
+using System.Collections.Generic;
+using System.Linq;
+using static System.Console;
 
 namespace MinChain
 {
@@ -13,19 +15,37 @@ namespace MinChain
 
     public class Program
     {
-        static ConnectionManager connectionManager;
+        static readonly Dictionary<string, Action<string[]>> commands =
+            new Dictionary<string, Action<string[]>>
+            {
+                { "genkey", KeyGenerator.Exec },
+                { "run", Runner.Run },
+            };
 
         public static void Main(string[] args)
         {
             Logging.Factory.AddConsole(LogLevel.Debug);
 
-            connectionManager = new ConnectionManager();
-            connectionManager.Start(
-                new IPEndPoint(IPAddress.Any, int.Parse(args[0])));
+            if (args.Length == 0)
+            {
+                WriteLine("No command provided.");
+                goto ListCommands;
+            }
 
-            Console.ReadLine();
+            Action<string[]> func;
+            var cmd = (args[0] ?? string.Empty).ToLower();
+            if (!commands.TryGetValue(cmd, out func))
+            {
+                WriteLine($"Command '{cmd}' not found.");
+                goto ListCommands;
+            }
 
-            connectionManager.Dispose();
+            func(args.Skip(1).ToArray());
+            return;
+
+        ListCommands:
+            WriteLine("List of commands are:");
+            commands.Keys.ToList().ForEach(name => WriteLine($"\t{name}"));
         }
     }
 }

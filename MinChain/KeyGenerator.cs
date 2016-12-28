@@ -5,7 +5,7 @@ namespace MinChain
 {
     public class KeyGenerator
     {
-        public static void Exec()
+        public static void Exec(string[] args)
         {
             ECPoint publicKey;
             byte[] privateKey;
