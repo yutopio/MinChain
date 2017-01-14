@@ -23,5 +23,8 @@ namespace MinChain
         public ByteString ObjectId { get; set; }
         public bool IsBlock { get; set; }
         public byte[] Data { get; set; }
+
+        public static implicit operator Message(InventoryMessage message) =>
+            null;
     }
 }

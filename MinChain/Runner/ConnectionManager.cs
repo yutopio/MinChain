@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,6 +14,8 @@ namespace MinChain
         static readonly ILogger logger = Logging.Logger<ConnectionManager>();
 
         public const int ListenBacklog = 20;
+
+        public event Action<Message, int> MessageReceived;
 
         readonly List<TcpClient> peers = new List<TcpClient>();
 
@@ -71,34 +73,81 @@ namespace MinChain
                         continue;
                     }
 
-                    logger.LogInformation($@"Accepted peer from {
-                        peer.Client.RemoteEndPoint}");
-
-                    await AddPeer(peer);
+                    AddPeer(peer);
                 }
             }
         }
 
         public async Task ConnectToAsync(IPEndPoint endpoint)
         {
-            var peer = new TcpClient(AddressFamily.InterNetwork);
-            try { await peer.ConnectAsync(endpoint.Address, endpoint.Port); }
+            var cl = new TcpClient(AddressFamily.InterNetwork);
+            try { await cl.ConnectAsync(endpoint.Address, endpoint.Port); }
             catch (SocketException exp)
             {
                 logger.LogInformation($"Failed to connect to {endpoint}.", exp);
                 return;
             }
 
-            await AddPeer(peer);
+            AddPeer(cl);
         }
 
-        async Task AddPeer(TcpClient peer)
+        void AddPeer(TcpClient peer)
         {
-            peers.Add(peer);
+            int id;
+            lock (peers)
+            {
+                id = peers.Count;
+                peers.Add(peer);
+            }
 
-            await peer.GetStream().WriteChunkAsync(
-                Encoding.ASCII.GetBytes("Hello, Goodbye"), token);
-            peer.Dispose();
+            Task.Run(() => ReadLoop(peer, id));
+        }
+
+        async Task ReadLoop(TcpClient peer, int peerId)
+        {
+            logger.LogInformation($@"Peer #{peerId} connected to {
+                peer.Client.RemoteEndPoint}.");
+
+            try
+            {
+                var stream = peer.GetStream();
+                while (!token.IsCancellationRequested)
+                {
+                    var d = await stream.ReadChunkAsync(token);
+                    // TODO(yuto): Deserialize
+                    MessageReceived(null, peerId);
+                }
+            }
+            finally
+            {
+                logger.LogInformation($"Peer #{peerId} disconnected.");
+
+                peers[peerId] = null;
+                peer.Dispose();
+            }
+        }
+
+        public Task SendAsync(Message message, int peerId)
+        {
+            var peer = peers[peerId];
+            return peer.IsNull() ?
+                Task.CompletedTask :
+                SendAsync(message, peer.GetStream());
+        }
+
+        public Task BroadcastAsync(Message message, int? exceptPeerId = null)
+        {
+            return Task.WhenAll(
+                from peer in peers.Where((_, i) => i != exceptPeerId)
+                where !peer.IsNull()
+                select SendAsync(message, peer.GetStream()));
+        }
+
+        Task SendAsync(Message message, NetworkStream stream)
+        {
+            // TODO(yuto): Serialize
+            var bytes = new byte[] { 1, 2, 3 };
+            return stream.WriteChunkAsync(bytes, token);
         }
     }
 }
