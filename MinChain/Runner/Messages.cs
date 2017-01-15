@@ -12,6 +12,16 @@ namespace MinChain
         public byte[] Payload { get; set; }
     }
 
+    public class Hello
+    {
+        public string[] MyPeers { get; set; }
+        public ByteString Genesis { get; set; }
+        public ByteString[] KnownBlocks { get; set; }
+
+        public static implicit operator Message(Hello message) =>
+            null;
+    }
+
     public enum InventoryMessageType : byte
     {
         Advertise, Request, Body

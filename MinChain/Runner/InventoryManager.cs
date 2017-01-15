@@ -14,6 +14,7 @@ namespace MinChain
             = new Dictionary<ByteString, byte[]>();
 
         public ConnectionManager ConnectionManager { get; set; }
+        public Executor Executor { get; set; }
 
         public Task HandleMessage(InventoryMessage message, int peerId)
         {

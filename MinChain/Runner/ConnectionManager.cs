@@ -15,6 +15,7 @@ namespace MinChain
 
         public const int ListenBacklog = 20;
 
+        public event Action<int> NewConnectionEstablished;
         public event Action<Message, int> MessageReceived;
 
         readonly List<TcpClient> peers = new List<TcpClient>();
@@ -100,7 +101,11 @@ namespace MinChain
                 peers.Add(peer);
             }
 
-            Task.Run(() => ReadLoop(peer, id));
+            Task.Run(async () =>
+            {
+                NewConnectionEstablished(id);
+                await ReadLoop(peer, id);
+            });
         }
 
         async Task ReadLoop(TcpClient peer, int peerId)
@@ -148,6 +153,23 @@ namespace MinChain
             // TODO(yuto): Serialize
             var bytes = new byte[] { 1, 2, 3 };
             return stream.WriteChunkAsync(bytes, token);
+        }
+
+        public IEnumerable<EndPoint> GetPeers()
+        {
+            return peers
+                .Select(x => x?.Client.RemoteEndPoint as IPEndPoint)
+                .Where(x => !x.IsNull());
+        }
+
+        public void Close(int peerId)
+        {
+            var peer = peers[peerId];
+            if (peer.IsNull())
+            {
+                peers[peerId] = null;
+                peer.Dispose();
+            }
         }
     }
 }
