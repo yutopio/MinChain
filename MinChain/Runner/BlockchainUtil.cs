@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using static ZeroFormatter.ZeroFormatterSerializer;
 
 namespace MinChain
 {
@@ -54,7 +55,7 @@ namespace MinChain
 
         public static Block DeserializeBlock(byte[] data)
         {
-            var block = new Block();
+            var block = Deserialize<Block>(data);
             block.Original = data;
             block.Id = ByteString.CopyFrom(ComputeBlockId(data));
             return block;
@@ -62,7 +63,7 @@ namespace MinChain
 
         public static Transaction DeserializeTransaction(byte[] data)
         {
-            var tx = new Transaction();
+            var tx = Deserialize<Transaction>(data);
             tx.Original = data;
             tx.Id = ByteString.CopyFrom(ComputeTransactionId(data));
             return tx;
@@ -70,10 +71,11 @@ namespace MinChain
 
         public static byte[] ComputeBlockId(byte[] data)
         {
-            var block = DeserializeBlock(data);
+            var block = Deserialize<Block>(data);
             block.TransactionIds = null;
             block.Transactions = null;
-            return Hash.ComputeDoubleSHA256(data);
+            var bytes = Serialize(block);
+            return Hash.ComputeDoubleSHA256(bytes);
         }
 
         public static byte[] ComputeTransactionId(byte[] data)
@@ -83,12 +85,14 @@ namespace MinChain
 
         public static byte[] GetTransactionSignHash(byte[] data)
         {
-            var tx = DeserializeTransaction(data);
+            var tx = Deserialize<Transaction>(data);
             foreach (var inEntry in tx.InEntries)
             {
+                inEntry.PublicKey = null;
                 inEntry.Signature = null;
             }
-            return Hash.ComputeDoubleSHA256(data);
+            var bytes = Serialize(tx);
+            return Hash.ComputeDoubleSHA256(bytes);
         }
     }
 }

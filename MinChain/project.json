@@ -11,7 +11,8 @@
     "Microsoft.NETCore.App": {
       "type": "platform",
       "version": "1.1.0"
-    }
+    },
+    "ZeroFormatter": "1.6.1"
   },
 
   "frameworks": {

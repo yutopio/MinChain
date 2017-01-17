@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using static ZeroFormatter.ZeroFormatterSerializer;
 
 namespace MinChain
 {
@@ -119,8 +120,8 @@ namespace MinChain
                 while (!token.IsCancellationRequested)
                 {
                     var d = await stream.ReadChunkAsync(token);
-                    // TODO(yuto): Deserialize
-                    MessageReceived(null, peerId);
+                    var msg = Deserialize<Message>(d);
+                    MessageReceived(msg, peerId);
                 }
             }
             finally
@@ -150,8 +151,7 @@ namespace MinChain
 
         Task SendAsync(Message message, NetworkStream stream)
         {
-            // TODO(yuto): Serialize
-            var bytes = new byte[] { 1, 2, 3 };
+            var bytes = Serialize(message);
             return stream.WriteChunkAsync(bytes, token);
         }
 

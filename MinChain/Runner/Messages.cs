@@ -1,3 +1,7 @@
+using System.Collections.Generic;
+using ZeroFormatter;
+using static ZeroFormatter.ZeroFormatterSerializer;
+
 namespace MinChain
 {
     public enum MessageType
@@ -6,20 +10,36 @@ namespace MinChain
         Inventory
     }
 
+    [ZeroFormattable]
     public class Message
     {
-        public MessageType Type { get; set; }
-        public byte[] Payload { get; set; }
+        [Index(0)]
+        public virtual MessageType Type { get; set; }
+
+        [Index(1)]
+        public virtual byte[] Payload { get; set; }
     }
 
+    [ZeroFormattable]
     public class Hello
     {
-        public string[] MyPeers { get; set; }
-        public ByteString Genesis { get; set; }
-        public ByteString[] KnownBlocks { get; set; }
+        [Index(0)]
+        public virtual IList<string> MyPeers { get; set; }
 
-        public static implicit operator Message(Hello message) =>
-            null;
+        [Index(1)]
+        public virtual ByteString Genesis { get; set; }
+
+        [Index(2)]
+        public virtual IList<ByteString> KnownBlocks { get; set; }
+
+        public static implicit operator Message(Hello message)
+        {
+            return new Message
+            {
+                Type = MessageType.Hello,
+                Payload = Serialize(message),
+            };
+        }
     }
 
     public enum InventoryMessageType : byte
@@ -27,14 +47,28 @@ namespace MinChain
         Advertise, Request, Body
     }
 
+    [ZeroFormattable]
     public class InventoryMessage
     {
-        public InventoryMessageType Type { get; set; }
-        public ByteString ObjectId { get; set; }
-        public bool IsBlock { get; set; }
-        public byte[] Data { get; set; }
+        [Index(0)]
+        public virtual InventoryMessageType Type { get; set; }
 
-        public static implicit operator Message(InventoryMessage message) =>
-            null;
+        [Index(1)]
+        public virtual ByteString ObjectId { get; set; }
+
+        [Index(2)]
+        public virtual bool IsBlock { get; set; }
+
+        [Index(3)]
+        public virtual byte[] Data { get; set; }
+
+        public static implicit operator Message(InventoryMessage message)
+        {
+            return new Message
+            {
+                Type = MessageType.Inventory,
+                Payload = Serialize(message),
+            };
+        }
     }
 }

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using static ZeroFormatter.ZeroFormatterSerializer;
 
 namespace MinChain
 {
@@ -48,8 +49,8 @@ namespace MinChain
             connectionManager.SendAsync(new Hello
             {
                 Genesis = genesis,
-                KnownBlocks = executor.Blocks.Keys.ToArray(),
-                MyPeers = peers.ToArray(),
+                KnownBlocks = executor.Blocks.Keys.ToList(),
+                MyPeers = peers.ToList(),
             }, peerId);
         }
 
@@ -58,7 +59,15 @@ namespace MinChain
             switch (message.Type)
             {
                 case MessageType.Hello:
+                    HandleHello(
+                        Deserialize<Hello>(message.Payload),
+                        peerId);
+                    break;
+
                 case MessageType.Inventory:
+                    inventoryManager.HandleMessage(
+                        Deserialize<InventoryMessage>(message.Payload),
+                        peerId);
                     break;
             }
         }

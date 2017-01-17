@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using static MinChain.InventoryMessageType;
+using static ZeroFormatter.ZeroFormatterSerializer;
 
 namespace MinChain
 {
@@ -54,13 +55,38 @@ namespace MinChain
             var data = message.Data;
             if (data.Length > MaximumBlockSize) return;
 
-            var id = Hash.ComputeDoubleSHA256(data);
+            var id = message.IsBlock ?
+                BlockchainUtil.ComputeBlockId(data) :
+                Hash.ComputeDoubleSHA256(data);
             if (!id.Equals(message.ObjectId)) return;
+
+            if (!message.IsBlock)
+            {
+                var tx = BlockchainUtil.DeserializeTransaction(data);
+
+                // Ignore the coinbase transactions.
+                if (tx.InEntries.Count == 0) return;
+            }
 
             var dic = message.IsBlock ? Blocks : MemoryPool;
             if (dic.ContainsKey(message.ObjectId)) return;
 
             dic.Add(message.ObjectId, data);
+
+            if (message.IsBlock)
+            {
+                var ignored = Task.Run(async () =>
+                {
+                    var prevId = Deserialize<Block>(data).PreviousHash;
+                    await ConnectionManager.SendAsync(new InventoryMessage
+                    {
+                        Type = Request,
+                        IsBlock = true,
+                        ObjectId = prevId,
+                    }, peerId);
+                    Executor.ProcessBlock(data, prevId);
+                });
+            }
 
             message.Type = Advertise;
             message.Data = null;

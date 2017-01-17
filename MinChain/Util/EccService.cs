@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using ZeroFormatter;
 
 namespace MinChain
 {
@@ -7,23 +8,23 @@ namespace MinChain
         public static readonly ECCurve Curve = ECCurve.NamedCurves.nistP256;
 
         public static void GenerateKey(
-            out byte[] privateKey, out ECPoint publicKey)
+            out byte[] privateKey, out byte[] publicKey)
         {
             ECParameters param;
             using (var dsa = ECDsa.Create(Curve))
                 param = dsa.ExportParameters(true);
 
             privateKey = param.D;
-            publicKey = param.Q;
+            publicKey = ToBytes(param.Q);
         }
 
         public static byte[] Sign(
-            byte[] hash, byte[] privateKey, ECPoint publicKey)
+            byte[] hash, byte[] privateKey, byte[] publicKey)
         {
             var param = new ECParameters
             {
                 D = privateKey,
-                Q = publicKey,
+                Q = ToEcPoint(publicKey),
                 Curve = Curve,
             };
 
@@ -32,16 +33,39 @@ namespace MinChain
         }
 
         public static bool Verify(
-            byte[] hash, byte[] signature, ECPoint publicKey)
+            byte[] hash, byte[] signature, byte[] publicKey)
         {
             var param = new ECParameters
             {
-                Q = publicKey,
+                Q = ToEcPoint(publicKey),
                 Curve = Curve,
             };
 
             using (var dsa = ECDsa.Create(param))
                 return dsa.VerifyHash(hash, signature);
+        }
+
+        static byte[] ToBytes(ECPoint point)
+        {
+            return ZeroFormatterSerializer.Serialize(
+                new FormattableEcPoint { X = point.X, Y = point.Y });
+        }
+
+        static ECPoint ToEcPoint(byte[] bytes)
+        {
+            var pt = ZeroFormatterSerializer
+                .Deserialize<FormattableEcPoint>(bytes);
+            return new ECPoint { X = pt.X, Y = pt.Y };
+        }
+
+        [ZeroFormattable]
+        public class FormattableEcPoint
+        {
+            [Index(0)]
+            public virtual byte[] X { get; set; }
+
+            [Index(1)]
+            public virtual byte[] Y { get; set; }
         }
     }
 }

@@ -1,47 +1,95 @@
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
+using ZeroFormatter;
 
 namespace MinChain
 {
+    [ZeroFormattable]
     public class Block
     {
+        [IgnoreFormat]
         public byte[] Original { get; set; }
+
+        [IgnoreFormat]
         public ByteString Id { get; set; }
-        public ByteString PreviousHash { get; set; }
-        public double Difficulty { get; set; }
-        public ulong Nonce { get; set; }
-        public DateTime Timestamp { get; set; }
-        public byte[] TransactionRootHash { get; set; }
-        public ByteString[] TransactionIds { get; set; }
-        public byte[][] Transactions { get; set; }
+
+        [Index(0)]
+        public virtual ByteString PreviousHash { get; set; }
+
+        [Index(1)]
+        public virtual double Difficulty { get; set; }
+
+        [Index(2)]
+        public virtual ulong Nonce { get; set; }
+
+        [Index(3)]
+        public virtual DateTime Timestamp { get; set; }
+
+        [Index(4)]
+        public virtual byte[] TransactionRootHash { get; set; }
+
+        [Index(5)]
+        public virtual IList<ByteString> TransactionIds { get; set; }
+
+        [Index(6)]
+        public virtual IList<byte[]> Transactions { get; set; }
+
+        [IgnoreFormat]
         public int Height { get; set; }
+
+        [IgnoreFormat]
         public Transaction[] ParsedTransactions { get; set; }
+
+        [IgnoreFormat]
         public double TotalDifficulty { get; set; }
     }
 
+    [ZeroFormattable]
     public class Transaction
     {
+        [IgnoreFormat]
         public byte[] Original { get; set; }
+
+        [IgnoreFormat]
         public ByteString Id { get; set; }
-        public DateTime Timestamp { get; set; }
-        public InEntry[] InEntries { get; set; }
-        public OutEntry[] OutEntries { get; set; }
+
+        [Index(0)]
+        public virtual DateTime Timestamp { get; set; }
+
+        [Index(1)]
+        public virtual IList<InEntry> InEntries { get; set; }
+
+        [Index(2)]
+        public virtual IList<OutEntry> OutEntries { get; set; }
+
+        [IgnoreFormat]
         public TransactionExecInformation ExecInfo { get; set; }
     }
 
+    [ZeroFormattable]
     public class InEntry
     {
-        public ByteString TransactionId { get; set; }
-        public ushort OutEntryIndex { get; set; }
-        public ECPoint PublicKey { get; set; }
-        public byte[] Signature { get; set; }
+        [Index(0)]
+        public virtual ByteString TransactionId { get; set; }
+
+        [Index(1)]
+        public virtual ushort OutEntryIndex { get; set; }
+
+        [Index(2)]
+        public virtual byte[] PublicKey { get; set; }
+
+        [Index(3)]
+        public virtual byte[] Signature { get; set; }
     }
 
+    [ZeroFormattable]
     public class OutEntry
     {
-        public ByteString RecipientHash { get; set; }
-        public ulong Amount { get; set; }
+        [Index(0)]
+        public virtual ByteString RecipientHash { get; set; }
+
+        [Index(1)]
+        public virtual ulong Amount { get; set; }
     }
 
     public class TransactionExecInformation

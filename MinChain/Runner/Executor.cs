@@ -203,7 +203,7 @@ namespace MinChain
             if (!block.ParsedTransactions.IsNull()) return;
 
             var blockTime = block.Timestamp;
-            var txCount = block.Transactions.Length;
+            var txCount = block.Transactions.Count;
             var rootTxHash = BlockchainUtil.RootHashTransactionIds(
                 block.TransactionIds);
             var difficulty = BlockParameter.GetNextDifficulty(
@@ -220,7 +220,7 @@ namespace MinChain
             // The Block ID has greater difficulty than the computed difficulty.
             if (blockTime > DateTime.UtcNow ||
                 blockTime < latest.Timestamp ||
-                txCount == 0 || txCount != block.TransactionIds.Length ||
+                txCount == 0 || txCount != block.TransactionIds.Count ||
                 !rootTxHash.SequenceEqual(block.TransactionRootHash) ||
                 !latest.Id.Equals(block.PreviousHash) ||
                 block.Difficulty >= difficulty * (1 + 1e-15) ||
@@ -273,7 +273,7 @@ namespace MinChain
 
             // Transaction header validity check.
             if (tx.Timestamp >= blockTime ||
-                !(coinbase == 0 ^ tx.InEntries.Length == 0))
+                !(coinbase == 0 ^ tx.InEntries.Count == 0))
             {
                 throw new ArgumentException();
             }
@@ -301,9 +301,7 @@ namespace MinChain
 
                 // Recipient address check.
                 // NOTE: In Bitcoin, recipient address is computed by RIPEMD160.
-                var pubKey = inEntry.PublicKey;
-                var addr = Hash.ComputeSHA256(
-                    pubKey.X.Concat(pubKey.Y).ToArray());
+                var addr = Hash.ComputeSHA256(inEntry.PublicKey);
                 var redeemable = txo.Recipient.Equals(addr);
 
                 // Sum all the reedemable.
