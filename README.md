@@ -13,3 +13,7 @@ This software uses the following external library:
 * ZeroFormatter: Copyright (c) 2016 Yoshifumi Kawai
   Licensed under the MIT License. See LICENSE for details.
   Website: https://github.com/neuecc/ZeroFormatter
+
+* Newtonsoft Json.NET: Copyright (c) 2007 James Newton-King
+  Licensed under The MIT License. See LICENSE.md for details.
+  Website: http://www.newtonsoft.com/json

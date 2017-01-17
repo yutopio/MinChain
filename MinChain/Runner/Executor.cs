@@ -300,8 +300,7 @@ namespace MinChain
                     utxo.TryGetValue(txo, out txo);
 
                 // Recipient address check.
-                // NOTE: In Bitcoin, recipient address is computed by RIPEMD160.
-                var addr = Hash.ComputeSHA256(inEntry.PublicKey);
+                var addr = BlockchainUtil.ToAddress(inEntry.PublicKey);
                 var redeemable = txo.Recipient.Equals(addr);
 
                 // Sum all the reedemable.

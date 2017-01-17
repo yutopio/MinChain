@@ -1,5 +1,5 @@
+using Newtonsoft.Json;
 using System;
-using System.Security.Cryptography;
 
 namespace MinChain
 {
@@ -11,15 +11,15 @@ namespace MinChain
             byte[] privateKey;
             EccService.GenerateKey(out privateKey, out publicKey);
 
-            Console.WriteLine(HexConvert.FromBytes(privateKey));
-            Console.WriteLine(HexConvert.FromBytes(publicKey));
-
-            var hash = Hash.ComputeDoubleSHA256(new byte[] { 1, 2, 3 });
-            var signature = EccService.Sign(hash, privateKey, publicKey);
-            Console.WriteLine(HexConvert.FromBytes(signature));
-
-            var verified = EccService.Verify(hash, signature, publicKey);
-            Console.WriteLine(verified);
+            var json = JsonConvert.SerializeObject(
+                new KeyPair
+                {
+                    PrivateKey = privateKey,
+                    PublicKey = publicKey,
+                    Address = BlockchainUtil.ToAddress(publicKey),
+                },
+                Formatting.Indented);
+            Console.WriteLine(json);
         }
     }
 }

@@ -94,5 +94,12 @@ namespace MinChain
             var bytes = Serialize(tx);
             return Hash.ComputeDoubleSHA256(bytes);
         }
+
+        public static byte[] ToAddress(byte[] publicKey)
+        {
+            // NOTE: In Bitcoin, recipient address is computed by SHA256 +
+            // RIPEMD160.
+            return Hash.ComputeDoubleSHA256(publicKey);
+        }
     }
 }
