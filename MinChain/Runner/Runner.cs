@@ -1,8 +1,9 @@
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading.Tasks;
 using static ZeroFormatter.ZeroFormatterSerializer;
 
@@ -15,7 +16,9 @@ namespace MinChain
         public static void Run(string[] args) =>
             new Runner().RunInternal(args);
 
-        readonly ByteString genesis;
+        Configuration config;
+        KeyPair myKeys;
+        ByteString genesis;
 
         ConnectionManager connectionManager;
         InventoryManager inventoryManager;
@@ -23,6 +26,8 @@ namespace MinChain
 
         void RunInternal(string[] args)
         {
+            if (!LoadConfiguration(args)) return;
+
             connectionManager = new ConnectionManager();
             inventoryManager = new InventoryManager();
             executor = new Executor();
@@ -34,12 +39,52 @@ namespace MinChain
             inventoryManager.Executor = executor;
             executor.InventoryManager = inventoryManager;
 
-            connectionManager.Start(
-                new IPEndPoint(IPAddress.Any, int.Parse(args[0])));
+            connectionManager.Start(config.ListenOn);
+            var t = Task.Run(async () =>
+            {
+                foreach (var ep in config.InitialEndpoints)
+                    await connectionManager.ConnectToAsync(ep);
+            });
 
             Console.ReadLine();
 
             connectionManager.Dispose();
+        }
+
+        bool LoadConfiguration(string[] args)
+        {
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Should provide configuration file path.");
+                return false;
+            }
+
+            try
+            {
+                config = JsonConvert.DeserializeObject<Configuration>(
+                    File.ReadAllText(Path.GetFullPath(args[0])));
+            }
+            catch (Exception exp)
+            {
+                logger.LogError(
+                    "Failed to load configuration file. Run 'config' command.",
+                    exp);
+                return false;
+            }
+
+            try
+            {
+                myKeys = KeyPair.LoadFrom(config.KeyPairPath);
+            }
+            catch (Exception exp)
+            {
+                logger.LogError(
+                    $"Failed to load key from {config.KeyPairPath}.",
+                    exp);
+                return false;
+            }
+
+            return true;
         }
 
         void NewPeer(int peerId)

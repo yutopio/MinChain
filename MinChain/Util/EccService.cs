@@ -45,6 +45,20 @@ namespace MinChain
                 return dsa.VerifyHash(hash, signature);
         }
 
+        public static bool TestKey(byte[] privateKey, byte[] publicKey)
+        {
+            byte[] testHash;
+            using (var sha = SHA256.Create())
+                testHash = sha.ComputeHash(new byte[0]);
+
+            try
+            {
+                var signature = Sign(testHash, privateKey, publicKey);
+                return Verify(testHash, signature, publicKey);
+            }
+            catch { return false; }
+        }
+
         static byte[] ToBytes(ECPoint point)
         {
             return ZeroFormatterSerializer.Serialize(

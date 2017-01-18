@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,12 +20,21 @@ namespace MinChain
             new Dictionary<string, Action<string[]>>
             {
                 { "genkey", KeyGenerator.Exec },
+                { "config", Configurator.Exec },
                 { "run", Runner.Run },
             };
 
         public static void Main(string[] args)
         {
             Logging.Factory.AddConsole(LogLevel.Debug);
+
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+            {
+                Converters = new List<JsonConverter>
+                {
+                    new IPEndPointConverter()
+                }
+            };
 
             if (args.Length == 0)
             {
