@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using ZeroFormatter;
@@ -7,88 +8,88 @@ namespace MinChain
     [ZeroFormattable]
     public class Block
     {
-        [IgnoreFormat]
+        [IgnoreFormat, JsonIgnore]
         public byte[] Original { get; set; }
 
-        [IgnoreFormat]
+        [IgnoreFormat, JsonProperty(PropertyName = "id")]
         public ByteString Id { get; set; }
 
-        [Index(0)]
+        [Index(0), JsonProperty(PropertyName = "prev")]
         public virtual ByteString PreviousHash { get; set; }
 
-        [Index(1)]
+        [Index(1), JsonProperty(PropertyName = "difficulty")]
         public virtual double Difficulty { get; set; }
 
-        [Index(2)]
+        [Index(2), JsonProperty(PropertyName = "nonce")]
         public virtual ulong Nonce { get; set; }
 
-        [Index(3)]
+        [Index(3), JsonProperty(PropertyName = "timestamp")]
         public virtual DateTime Timestamp { get; set; }
 
-        [Index(4)]
+        [Index(4), JsonProperty(PropertyName = "root")]
         public virtual byte[] TransactionRootHash { get; set; }
 
-        [Index(5)]
+        [Index(5), JsonIgnore]
         public virtual IList<ByteString> TransactionIds { get; set; }
 
-        [Index(6)]
+        [Index(6), JsonIgnore]
         public virtual IList<byte[]> Transactions { get; set; }
 
-        [IgnoreFormat]
+        [IgnoreFormat, JsonProperty(PropertyName = "height")]
         public int Height { get; set; }
 
-        [IgnoreFormat]
+        [IgnoreFormat, JsonProperty(PropertyName = "txs")]
         public Transaction[] ParsedTransactions { get; set; }
 
-        [IgnoreFormat]
+        [IgnoreFormat, JsonIgnore]
         public double TotalDifficulty { get; set; }
     }
 
     [ZeroFormattable]
     public class Transaction
     {
-        [IgnoreFormat]
+        [IgnoreFormat, JsonIgnore]
         public byte[] Original { get; set; }
 
-        [IgnoreFormat]
+        [IgnoreFormat, JsonProperty(PropertyName = "id")]
         public ByteString Id { get; set; }
 
-        [Index(0)]
+        [Index(0), JsonProperty(PropertyName = "timestamp")]
         public virtual DateTime Timestamp { get; set; }
 
-        [Index(1)]
+        [Index(1), JsonProperty(PropertyName = "in")]
         public virtual IList<InEntry> InEntries { get; set; }
 
-        [Index(2)]
+        [Index(2), JsonProperty(PropertyName = "out")]
         public virtual IList<OutEntry> OutEntries { get; set; }
 
-        [IgnoreFormat]
+        [IgnoreFormat, JsonIgnore]
         public TransactionExecInformation ExecInfo { get; set; }
     }
 
     [ZeroFormattable]
     public class InEntry
     {
-        [Index(0)]
+        [Index(0), JsonProperty(PropertyName = "tx")]
         public virtual ByteString TransactionId { get; set; }
 
-        [Index(1)]
+        [Index(1), JsonProperty(PropertyName = "i")]
         public virtual ushort OutEntryIndex { get; set; }
 
-        [Index(2)]
+        [Index(2), JsonProperty(PropertyName = "pub")]
         public virtual byte[] PublicKey { get; set; }
 
-        [Index(3)]
+        [Index(3), JsonProperty(PropertyName = "sig")]
         public virtual byte[] Signature { get; set; }
     }
 
     [ZeroFormattable]
     public class OutEntry
     {
-        [Index(0)]
+        [Index(0), JsonProperty(PropertyName = "to")]
         public virtual ByteString RecipientHash { get; set; }
 
-        [Index(1)]
+        [Index(1), JsonProperty(PropertyName = "val")]
         public virtual ulong Amount { get; set; }
     }
 

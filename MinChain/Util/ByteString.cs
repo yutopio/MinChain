@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using System.Linq;
 using ZeroFormatter;
@@ -8,6 +9,7 @@ namespace MinChain
     /// <summary>
     /// Represents an immutable string of bytes.
     /// </summary>
+    [JsonConverter(typeof(ByteStringConverter))]
     public class ByteString : IEquatable<ByteString>, IComparable<ByteString>
     {
         readonly byte[] bytes;
@@ -73,6 +75,27 @@ namespace MinChain
             {
                 return new ByteString(Formatter<TTypeResolver, byte[]>.Default
                     .Deserialize(ref bytes, offset, tracker, out byteSize));
+            }
+        }
+
+        public class ByteStringConverter : JsonConverter
+        {
+            public override bool CanConvert(Type objectType) =>
+                objectType == typeof(byte[]);
+
+            public override object ReadJson(
+                JsonReader reader, Type objectType, object existingValue,
+                JsonSerializer serializer)
+            {
+                return new ByteString(HexConvert.ToBytes(
+                    serializer.Deserialize<string>(reader) ?? ""));
+            }
+
+            public override void WriteJson(
+                JsonWriter writer, object value, JsonSerializer serializer)
+            {
+                writer.WriteValue(
+                    HexConvert.FromBytes(((ByteString)value).bytes));
             }
         }
     }
