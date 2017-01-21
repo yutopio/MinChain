@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ZeroFormatter;
 
 namespace MinChain
@@ -43,6 +44,24 @@ namespace MinChain
 
         [IgnoreFormat, JsonIgnore]
         public double TotalDifficulty { get; set; }
+
+        public Block Clone() =>
+            new Block
+            {
+                Original = Original,
+                Id = Id,
+                PreviousHash = PreviousHash,
+                Difficulty = Difficulty,
+                Nonce = Nonce,
+                Timestamp = Timestamp,
+                TransactionRootHash = TransactionRootHash,
+                TransactionIds = TransactionIds?.ToList(),
+                Transactions = Transactions?.ToList(),
+                Height = Height,
+                ParsedTransactions = ParsedTransactions
+                    ?.Select(x => x.Clone()).ToArray(),
+                TotalDifficulty = TotalDifficulty,
+            };
     }
 
     [ZeroFormattable]
@@ -65,6 +84,17 @@ namespace MinChain
 
         [IgnoreFormat, JsonIgnore]
         public TransactionExecInformation ExecInfo { get; set; }
+
+        public Transaction Clone() =>
+            new Transaction
+            {
+                Original = Original,
+                Id = Id,
+                Timestamp = Timestamp,
+                InEntries = InEntries?.Select(x => x.Clone()).ToList(),
+                OutEntries = OutEntries?.Select(x => x.Clone()).ToList(),
+                ExecInfo = ExecInfo,
+            };
     }
 
     [ZeroFormattable]
@@ -81,6 +111,15 @@ namespace MinChain
 
         [Index(3), JsonProperty(PropertyName = "sig")]
         public virtual byte[] Signature { get; set; }
+
+        public InEntry Clone() =>
+            new InEntry
+            {
+                TransactionId = TransactionId,
+                OutEntryIndex = OutEntryIndex,
+                PublicKey = PublicKey,
+                Signature = Signature,
+            };
     }
 
     [ZeroFormattable]
@@ -91,6 +130,13 @@ namespace MinChain
 
         [Index(1), JsonProperty(PropertyName = "val")]
         public virtual ulong Amount { get; set; }
+
+        public OutEntry Clone() =>
+            new OutEntry
+            {
+                RecipientHash = RecipientHash,
+                Amount = Amount,
+            };
     }
 
     public class TransactionExecInformation

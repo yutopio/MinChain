@@ -71,7 +71,7 @@ namespace MinChain
 
         public static byte[] ComputeBlockId(byte[] data)
         {
-            var block = Deserialize<Block>(data);
+            var block = Deserialize<Block>(data).Clone();
             block.TransactionIds = null;
             block.Transactions = null;
             var bytes = Serialize(block);
@@ -85,7 +85,7 @@ namespace MinChain
 
         public static byte[] GetTransactionSignHash(byte[] data)
         {
-            var tx = Deserialize<Transaction>(data);
+            var tx = Deserialize<Transaction>(data).Clone();
             foreach (var inEntry in tx.InEntries)
             {
                 inEntry.PublicKey = null;
