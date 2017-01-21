@@ -21,6 +21,7 @@ namespace MinChain
             {
                 { "genkey", KeyGenerator.Exec },
                 { "config", Configurator.Exec },
+                { "genesis", Genesis.Exec },
                 { "run", Runner.Run },
             };
 
@@ -35,6 +36,8 @@ namespace MinChain
                     new IPEndPointConverter()
                 }
             };
+
+            ByteString.CopyFrom(new byte[0]);
 
             if (args.Length == 0)
             {

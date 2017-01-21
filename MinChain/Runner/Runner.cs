@@ -18,7 +18,7 @@ namespace MinChain
 
         Configuration config;
         KeyPair myKeys;
-        ByteString genesis;
+        Block genesis;
 
         ConnectionManager connectionManager;
         InventoryManager inventoryManager;
@@ -38,6 +38,9 @@ namespace MinChain
             inventoryManager.ConnectionManager = connectionManager;
             inventoryManager.Executor = executor;
             executor.InventoryManager = inventoryManager;
+
+            inventoryManager.Blocks.Add(genesis.Id, genesis.Original);
+            executor.ProcessBlock(genesis.Original, genesis.PreviousHash);
 
             connectionManager.Start(config.ListenOn);
             var t = Task.Run(async () =>
@@ -84,6 +87,19 @@ namespace MinChain
                 return false;
             }
 
+            try
+            {
+                var bytes = File.ReadAllBytes(config.GenesisPath);
+                genesis = BlockchainUtil.DeserializeBlock(bytes);
+            }
+            catch (Exception exp)
+            {
+                logger.LogError(
+                    $"Failed to load the genesis from {config.GenesisPath}.",
+                    exp);
+                return false;
+            }
+
             return true;
         }
 
@@ -93,7 +109,7 @@ namespace MinChain
                 .Select(x => x.ToString());
             connectionManager.SendAsync(new Hello
             {
-                Genesis = genesis,
+                Genesis = genesis.Id,
                 KnownBlocks = executor.Blocks.Keys.ToList(),
                 MyPeers = peers.ToList(),
             }, peerId);
@@ -120,7 +136,7 @@ namespace MinChain
         void HandleHello(Hello hello, int peerId)
         {
             // Check if the peer is on the same network.
-            if (!genesis.Equals(hello.Genesis))
+            if (!genesis.Id.Equals(hello.Genesis))
                 connectionManager.Close(peerId);
 
             var myBlocks = new HashSet<ByteString>();

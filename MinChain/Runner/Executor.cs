@@ -46,6 +46,16 @@ namespace MinChain
         {
             floatingBlocks = new Dictionary<ByteString, List<ByteString>>();
             utxo = new Dictionary<TransactionOutput, TransactionOutput>();
+
+            latest = new Block
+            {
+                Id = Genesis.EmptyHash,
+                Difficulty = Genesis.Difficulty,
+                Timestamp = DateTime.MinValue,
+                Height = -1,
+                TotalDifficulty = 0,
+            };
+            Blocks.Add(latest.Id, latest);
         }
 
         public void ProcessBlock(byte[] data, ByteString prevId)
