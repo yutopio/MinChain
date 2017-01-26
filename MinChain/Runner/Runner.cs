@@ -115,25 +115,25 @@ namespace MinChain
             }, peerId);
         }
 
-        void HandleMessage(Message message, int peerId)
+        Task HandleMessage(Message message, int peerId)
         {
             switch (message.Type)
             {
                 case MessageType.Hello:
-                    HandleHello(
+                    return HandleHello(
                         Deserialize<Hello>(message.Payload),
                         peerId);
-                    break;
 
                 case MessageType.Inventory:
-                    inventoryManager.HandleMessage(
+                    return inventoryManager.HandleMessage(
                         Deserialize<InventoryMessage>(message.Payload),
                         peerId);
-                    break;
+
+                default: return Task.CompletedTask;
             }
         }
 
-        void HandleHello(Hello hello, int peerId)
+        async Task HandleHello(Hello hello, int peerId)
         {
             // Check if the peer is on the same network.
             if (!genesis.Id.Equals(hello.Genesis))
@@ -154,11 +154,8 @@ namespace MinChain
                 .ToArray();
 
             // Send request for unknown blocks.
-            Task.Run(async () =>
-            {
-                foreach (var message in messages)
-                    await connectionManager.SendAsync(message, peerId);
-            });
+            foreach (var message in messages)
+                await connectionManager.SendAsync(message, peerId);
         }
     }
 }

@@ -17,7 +17,7 @@ namespace MinChain
         public const int ListenBacklog = 20;
 
         public event Action<int> NewConnectionEstablished;
-        public event Action<Message, int> MessageReceived;
+        public event Func<Message, int, Task> MessageReceived;
 
         readonly List<TcpClient> peers = new List<TcpClient>();
 
@@ -121,7 +121,7 @@ namespace MinChain
                 {
                     var d = await stream.ReadChunkAsync(token);
                     var msg = Deserialize<Message>(d);
-                    MessageReceived(msg, peerId);
+                    await MessageReceived(msg, peerId);
                 }
             }
             finally
