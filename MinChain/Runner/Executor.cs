@@ -38,16 +38,18 @@ namespace MinChain
         // constructed UTXO instance with TxID and Output index.  This is
         // possible because TransactionOutput implements comparator which use
         // TxID and output index for the comparison.
-        readonly Dictionary<TransactionOutput, TransactionOutput> utxo;
+        public Dictionary<TransactionOutput, TransactionOutput> Utxos { get; }
+            = new Dictionary<TransactionOutput, TransactionOutput>();
 
-        Block latest;
+        public Block Latest { get; private set; }
+
+        public event Action BlockExecuted;
 
         public Executor()
         {
             floatingBlocks = new Dictionary<ByteString, List<ByteString>>();
-            utxo = new Dictionary<TransactionOutput, TransactionOutput>();
 
-            latest = new Block
+            Latest = new Block
             {
                 Id = Genesis.EmptyHash,
                 Difficulty = Genesis.Difficulty,
@@ -55,7 +57,7 @@ namespace MinChain
                 Height = -1,
                 TotalDifficulty = 0,
             };
-            Blocks.Add(latest.Id, latest);
+            Blocks.Add(Latest.Id, Latest);
         }
 
         public void ProcessBlock(byte[] data, ByteString prevId)
@@ -81,7 +83,7 @@ namespace MinChain
             // If the block difficulty does not surpass the current latest,
             // skip the execution.  Once the descendant block comes later,
             // evaluate the difficulty then again.
-            if (latest.TotalDifficulty >= block.TotalDifficulty)
+            if (Latest.TotalDifficulty >= block.TotalDifficulty)
             {
                 CheckFloatingBlocks(block.Id);
                 return;
@@ -91,8 +93,8 @@ namespace MinChain
             // first revert all the applied blocks prior to the fork point in
             // past blocks, if exists.  Then apply blocks after the fork.
             var fork = BlockchainUtil.LowestCommonAncestor(
-                latest, block, Blocks);
-            var revertingChain = latest.Ancestors(Blocks)
+                Latest, block, Blocks);
+            var revertingChain = Latest.Ancestors(Blocks)
                 .TakeWhile(x => !x.Id.Equals(fork.Id))
                 .ToList();
             var applyingChain = block.Ancestors(Blocks)
@@ -158,11 +160,12 @@ namespace MinChain
                 if (!tx.ExecInfo.Coinbase)
                     InventoryManager.MemoryPool.Remove(tx.Id);
 
-                tx.ExecInfo.RedeemedOutputs.ForEach(x => utxo.Remove(x));
-                tx.ExecInfo.GeneratedOutputs.ForEach(x => utxo.Add(x, x));
+                tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Remove(x));
+                tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Add(x, x));
             }
 
-            latest = block;
+            Latest = block;
+            BlockExecuted();
         }
 
         void Revert(Block block)
@@ -175,11 +178,12 @@ namespace MinChain
                 if (!tx.ExecInfo.Coinbase)
                     InventoryManager.MemoryPool.Add(tx.Id, tx.Original);
 
-                tx.ExecInfo.RedeemedOutputs.ForEach(x => utxo.Add(x, x));
-                tx.ExecInfo.GeneratedOutputs.ForEach(x => utxo.Remove(x));
+                tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Add(x, x));
+                tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Remove(x));
             }
 
-            latest = Blocks[block.PreviousHash];
+            Latest = Blocks[block.PreviousHash];
+            BlockExecuted();
         }
 
         void PurgeBlock(ByteString id)
@@ -209,7 +213,7 @@ namespace MinChain
             logger.LogDebug($@"Attempt to run Block:{
                 block.Id.ToString().Substring(0, 7)}");
 
-            Debug.Assert(latest.Id.Equals(block.PreviousHash));
+            Debug.Assert(Latest.Id.Equals(block.PreviousHash));
             if (!block.ParsedTransactions.IsNull()) return;
 
             var blockTime = block.Timestamp;
@@ -229,10 +233,10 @@ namespace MinChain
             // The block's difficulty must be within the computed range.
             // The Block ID has greater difficulty than the computed difficulty.
             if (blockTime > DateTime.UtcNow ||
-                blockTime < latest.Timestamp ||
+                blockTime < Latest.Timestamp ||
                 txCount == 0 || txCount != block.TransactionIds.Count ||
                 !rootTxHash.SequenceEqual(block.TransactionRootHash) ||
-                !latest.Id.Equals(block.PreviousHash) ||
+                !Latest.Id.Equals(block.PreviousHash) ||
                 block.Difficulty >= difficulty * (1 + 1e-15) ||
                 block.Difficulty <= difficulty * (1 - 1e-15) ||
                 Hash.Difficulty(block.Id.ToByteArray()) < block.Difficulty)
@@ -253,7 +257,7 @@ namespace MinChain
             }
 
             // Run normal transactions.
-            ulong coinbase = BlockParameter.GetCoinbase(latest.Height + 1);
+            ulong coinbase = BlockParameter.GetCoinbase(Latest.Height + 1);
             var spent = new List<TransactionOutput>();
             for (var i = 1; i < txCount; i++)
             {
@@ -269,12 +273,12 @@ namespace MinChain
             // Run the coinbase transaction.
             Run(transactions[0], blockTime, coinbase);
 
-            block.Height = latest.Height + 1;
+            block.Height = Latest.Height + 1;
             block.ParsedTransactions = transactions;
-            block.TotalDifficulty = latest.TotalDifficulty + block.Difficulty;
+            block.TotalDifficulty = Latest.TotalDifficulty + block.Difficulty;
         }
 
-        void Run(Transaction tx,
+        public void Run(Transaction tx,
             DateTime blockTime, ulong coinbase = 0,
             List<TransactionOutput> spentTxo = null)
         {
@@ -282,7 +286,7 @@ namespace MinChain
                 tx.Id.ToString().Substring(0, 7)}");
 
             // Transaction header validity check.
-            if (tx.Timestamp >= blockTime ||
+            if (tx.Timestamp > blockTime ||
                 !(coinbase == 0 ^ tx.InEntries.Count == 0))
             {
                 throw new ArgumentException();
@@ -307,7 +311,7 @@ namespace MinChain
                 };
                 var unspent =
                     !(spentTxo?.Contains(txo) ?? false) &&
-                    utxo.TryGetValue(txo, out txo);
+                    Utxos.TryGetValue(txo, out txo);
 
                 // Recipient address check.
                 var addr = BlockchainUtil.ToAddress(inEntry.PublicKey);
