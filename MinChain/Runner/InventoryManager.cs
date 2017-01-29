@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using static MinChain.InventoryMessageType;
@@ -11,8 +12,8 @@ namespace MinChain
 
         public Dictionary<ByteString, byte[]> Blocks { get; }
             = new Dictionary<ByteString, byte[]>();
-        public Dictionary<ByteString, byte[]> MemoryPool { get; }
-            = new Dictionary<ByteString, byte[]>();
+        public Dictionary<ByteString, Transaction> MemoryPool { get; }
+            = new Dictionary<ByteString, Transaction>();
 
         public ConnectionManager ConnectionManager { get; set; }
         public Executor Executor { get; set; }
@@ -30,9 +31,13 @@ namespace MinChain
 
         async Task HandleAdvertise(InventoryMessage message, int peerId)
         {
-            var dic = message.IsBlock ? Blocks : MemoryPool;
-            if (dic.ContainsKey(message.ObjectId))
-                return;
+            // Data should not contain anything. (To prevent DDoS)
+            if (!message.Data.IsNull()) throw new ArgumentException();
+
+            var haveObject = message.IsBlock ?
+                Blocks.ContainsKey(message.ObjectId) :
+                MemoryPool.ContainsKey(message.ObjectId);
+            if (haveObject) return;
 
             message.Type = Request;
             await ConnectionManager.SendAsync(message, peerId);
@@ -40,10 +45,20 @@ namespace MinChain
 
         async Task HandleRequest(InventoryMessage message, int peerId)
         {
+            // Data should not contain anything. (To prevent DDoS)
+            if (!message.Data.IsNull()) throw new ArgumentException();
+
             byte[] data;
-            var dic = message.IsBlock ? Blocks : MemoryPool;
-            if (!dic.TryGetValue(message.ObjectId, out data))
-                return;
+            if (message.IsBlock)
+            {
+                if (!Blocks.TryGetValue(message.ObjectId, out data)) return;
+            }
+            else
+            {
+                Transaction tx;
+                if (!MemoryPool.TryGetValue(message.ObjectId, out tx)) return;
+                data = tx.Original;
+            }
 
             message.Type = Body;
             message.Data = data;
@@ -52,40 +67,45 @@ namespace MinChain
 
         async Task HandleBody(InventoryMessage message, int peerId)
         {
+            // Data should not exceed the maximum size.
             var data = message.Data;
-            if (data.Length > MaximumBlockSize) return;
+            if (data.Length > MaximumBlockSize) throw new ArgumentException();
 
             var id = message.IsBlock ?
                 BlockchainUtil.ComputeBlockId(data) :
                 Hash.ComputeDoubleSHA256(data);
-            if (!id.Equals(message.ObjectId)) return;
-
-            if (!message.IsBlock)
-            {
-                var tx = BlockchainUtil.DeserializeTransaction(data);
-
-                // Ignore the coinbase transactions.
-                if (tx.InEntries.Count == 0) return;
-            }
-
-            var dic = message.IsBlock ? Blocks : MemoryPool;
-            if (dic.ContainsKey(message.ObjectId)) return;
-
-            dic.Add(message.ObjectId, data);
+            if (!ByteString.CopyFrom(id).Equals(message.ObjectId)) return;
 
             if (message.IsBlock)
             {
-                var ignored = Task.Run(async () =>
+                if (Blocks.ContainsKey(message.ObjectId)) return;
+                Blocks.Add(message.ObjectId, data);
+
+                var prevId = Deserialize<Block>(data).PreviousHash;
+                if (!Blocks.ContainsKey(prevId))
                 {
-                    var prevId = Deserialize<Block>(data).PreviousHash;
                     await ConnectionManager.SendAsync(new InventoryMessage
                     {
                         Type = Request,
                         IsBlock = true,
                         ObjectId = prevId,
                     }, peerId);
+                }
+                else
+                {
                     Executor.ProcessBlock(data, prevId);
-                });
+                }
+            }
+            else
+            {
+                if (MemoryPool.ContainsKey(message.ObjectId)) return;
+
+                var tx = BlockchainUtil.DeserializeTransaction(data);
+
+                // Ignore the coinbase transactions.
+                if (tx.InEntries.Count == 0) return;
+
+                MemoryPool.Add(message.ObjectId, tx);
             }
 
             message.Type = Advertise;

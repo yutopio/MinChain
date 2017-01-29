@@ -176,7 +176,7 @@ namespace MinChain
             foreach (var tx in block.ParsedTransactions)
             {
                 if (!tx.ExecInfo.Coinbase)
-                    InventoryManager.MemoryPool.Add(tx.Id, tx.Original);
+                    InventoryManager.MemoryPool.Add(tx.Id, tx);
 
                 tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Add(x, x));
                 tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Remove(x));
