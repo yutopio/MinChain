@@ -23,6 +23,7 @@ namespace MinChain
         ConnectionManager connectionManager;
         InventoryManager inventoryManager;
         Executor executor;
+        Mining miner;
 
         void RunInternal(string[] args)
         {
@@ -31,13 +32,18 @@ namespace MinChain
             connectionManager = new ConnectionManager();
             inventoryManager = new InventoryManager();
             executor = new Executor();
+            miner = new Mining();
 
             connectionManager.NewConnectionEstablished += NewPeer;
             connectionManager.MessageReceived += HandleMessage;
+            executor.BlockExecuted += miner.Notify;
 
             inventoryManager.ConnectionManager = connectionManager;
             inventoryManager.Executor = executor;
             executor.InventoryManager = inventoryManager;
+            miner.ConnectionManager = connectionManager;
+            miner.InventoryManager = inventoryManager;
+            miner.Executor = executor;
 
             inventoryManager.Blocks.Add(genesis.Id, genesis.Original);
             executor.ProcessBlock(genesis.Original, genesis.PreviousHash);
@@ -48,6 +54,9 @@ namespace MinChain
                 foreach (var ep in config.InitialEndpoints)
                     await connectionManager.ConnectToAsync(ep);
             });
+
+            miner.RecipientAddress = ByteString.CopyFrom(myKeys.Address);
+            miner.Start();
 
             Console.ReadLine();
 
