@@ -19,11 +19,24 @@ namespace MinChain
         public event Action<int> NewConnectionEstablished;
         public event Func<Message, int, Task> MessageReceived;
 
-        readonly List<TcpClient> peers = new List<TcpClient>();
+        readonly List<ConnectionInfo> peers = new List<ConnectionInfo>();
 
         Task listenTask;
         CancellationTokenSource tokenSource;
         CancellationToken token;
+
+        class ConnectionInfo
+        {
+            public ConnectionInfo(TcpClient tcpClient)
+            {
+                Client = tcpClient;
+                Stream = tcpClient.GetStream();
+            }
+
+            public TcpClient Client { get; }
+            public NetworkStream Stream { get; }
+            public Task LastWrite { get; set; } = Task.CompletedTask;
+        }
 
         public void Start(IPEndPoint localEndpoint = null)
         {
@@ -44,7 +57,7 @@ namespace MinChain
                 tokenSource = null;
             }
 
-            peers.ForEach(x => x?.Dispose());
+            peers.ForEach(x => x?.Client.Dispose());
             peers.Clear();
         }
 
@@ -62,12 +75,16 @@ namespace MinChain
                 return;
             }
 
-            using (token.Register(listener.Stop))
+            var tcs = new TaskCompletionSource<int>();
+            using (token.Register(tcs.SetCanceled))
             {
                 while (!token.IsCancellationRequested)
                 {
+                    var acceptTask = listener.AcceptTcpClientAsync();
+                    if ((await Task.WhenAny(acceptTask, tcs.Task)).IsCanceled) break;
+
                     TcpClient peer;
-                    try { peer = await listener.AcceptTcpClientAsync(); }
+                    try { peer = acceptTask.Result; }
                     catch (SocketException exp)
                     {
                         logger.LogInformation(
@@ -78,6 +95,8 @@ namespace MinChain
                     AddPeer(peer);
                 }
             }
+
+            listener.Stop();
         }
 
         public async Task ConnectToAsync(IPEndPoint endpoint)
@@ -86,7 +105,14 @@ namespace MinChain
             try { await cl.ConnectAsync(endpoint.Address, endpoint.Port); }
             catch (SocketException exp)
             {
-                logger.LogInformation($"Failed to connect to {endpoint}.", exp);
+                logger.LogInformation(
+                    $"Failed to connect to {endpoint}.  Retry in 30 seconds.",
+                    exp);
+
+                // Create another task to retry.
+                var ignored = Task.Delay(TimeSpan.FromSeconds(30))
+                    .ContinueWith(_ => ConnectToAsync(endpoint));
+
                 return;
             }
 
@@ -95,31 +121,32 @@ namespace MinChain
 
         void AddPeer(TcpClient peer)
         {
+            var connectionInfo = new ConnectionInfo(peer);
+
             int id;
             lock (peers)
             {
                 id = peers.Count;
-                peers.Add(peer);
+                peers.Add(connectionInfo);
             }
 
             Task.Run(async () =>
             {
                 NewConnectionEstablished(id);
-                await ReadLoop(peer, id);
+                await ReadLoop(connectionInfo, id);
             });
         }
 
-        async Task ReadLoop(TcpClient peer, int peerId)
+        async Task ReadLoop(ConnectionInfo connection, int peerId)
         {
             logger.LogInformation($@"Peer #{peerId} connected to {
-                peer.Client.RemoteEndPoint}.");
+                connection.Client.Client.RemoteEndPoint}.");
 
             try
             {
-                var stream = peer.GetStream();
                 while (!token.IsCancellationRequested)
                 {
-                    var d = await stream.ReadChunkAsync(token);
+                    var d = await connection.Stream.ReadChunkAsync(token);
                     var msg = Deserialize<Message>(d);
                     await MessageReceived(msg, peerId);
                 }
@@ -129,7 +156,7 @@ namespace MinChain
                 logger.LogInformation($"Peer #{peerId} disconnected.");
 
                 peers[peerId] = null;
-                peer.Dispose();
+                connection.Client.Dispose();
             }
         }
 
@@ -138,7 +165,7 @@ namespace MinChain
             var peer = peers[peerId];
             return peer.IsNull() ?
                 Task.CompletedTask :
-                SendAsync(message, peer.GetStream());
+                SendAsync(message, peer);
         }
 
         public Task BroadcastAsync(Message message, int? exceptPeerId = null)
@@ -146,19 +173,40 @@ namespace MinChain
             return Task.WhenAll(
                 from peer in peers.Where((_, i) => i != exceptPeerId)
                 where !peer.IsNull()
-                select SendAsync(message, peer.GetStream()));
+                select SendAsync(message, peer));
         }
 
-        Task SendAsync(Message message, NetworkStream stream)
+        Task SendAsync(Message message, ConnectionInfo connection)
         {
+            // This method may be called concurrently.
+
             var bytes = Serialize(message);
-            return stream.WriteChunkAsync(bytes, token);
+            Func<Task, Task> writeContinue = async _ =>
+            {
+                try
+                {
+                    await connection.Stream.WriteChunkAsync(bytes, token);
+                }
+                catch
+                {
+                    // Shutdown the connection whatever the exception is.
+                    // Eventually ReadLoop will take care Dispose.
+                    connection.Client.Client.Shutdown(SocketShutdown.Both);
+                }
+            };
+
+            lock (connection)
+            {
+                // To ensure the sequential write.
+                return connection.LastWrite =
+                    connection.LastWrite.ContinueWith(writeContinue);
+            }
         }
 
         public IEnumerable<EndPoint> GetPeers()
         {
             return peers
-                .Select(x => x?.Client.RemoteEndPoint as IPEndPoint)
+                .Select(x => x?.Client.Client.RemoteEndPoint as IPEndPoint)
                 .Where(x => !x.IsNull());
         }
 
@@ -168,7 +216,7 @@ namespace MinChain
             if (peer.IsNull())
             {
                 peers[peerId] = null;
-                peer.Dispose();
+                peer.Client.Dispose();
             }
         }
     }
