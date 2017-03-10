@@ -78,8 +78,11 @@ namespace MinChain
 
             if (message.IsBlock)
             {
-                if (Blocks.ContainsKey(message.ObjectId)) return;
-                Blocks.Add(message.ObjectId, data);
+                lock (Blocks)
+                {
+                    if (Blocks.ContainsKey(message.ObjectId)) return;
+                    Blocks.Add(message.ObjectId, data);
+                }
 
                 var prevId = Deserialize<Block>(data).PreviousHash;
                 if (!Blocks.ContainsKey(prevId))
@@ -105,7 +108,11 @@ namespace MinChain
                 // Ignore the coinbase transactions.
                 if (tx.InEntries.Count == 0) return;
 
-                MemoryPool.Add(message.ObjectId, tx);
+                lock (MemoryPool)
+                {
+                    if (MemoryPool.ContainsKey(message.ObjectId)) return;
+                    MemoryPool.Add(message.ObjectId, tx);
+                }
             }
 
             message.Type = Advertise;

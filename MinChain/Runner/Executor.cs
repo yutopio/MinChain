@@ -62,6 +62,11 @@ namespace MinChain
 
         public void ProcessBlock(byte[] data, ByteString prevId)
         {
+            lock (this) ProcessBlockLocked(data, prevId);
+        }
+
+        void ProcessBlockLocked(byte[] data, ByteString prevId)
+        {
             Block prev;
             if (!Blocks.TryGetValue(prevId, out prev))
             {
@@ -143,9 +148,16 @@ namespace MinChain
             {
                 foreach (var floatBlockId in pendingBlocks)
                 {
-                    ProcessBlock(
-                        InventoryManager.Blocks[floatBlockId],
-                        waitingBlockId);
+                    byte[] data = null;
+                    try
+                    {
+                        lock (InventoryManager.Blocks)
+                            data = InventoryManager.Blocks[floatBlockId];
+                    }
+                    catch { }
+
+                    if (data.IsNull()) { continue; }
+                    ProcessBlockLocked(data, waitingBlockId);
                 }
             }
         }
@@ -155,11 +167,18 @@ namespace MinChain
             logger.LogWarning($@"Applying Block {block.Height}:{
                 block.Id.ToString().Substring(0, 7)}.");
 
+            var txIds = (
+                from tx in block.ParsedTransactions
+                where !tx.ExecInfo.Coinbase
+                select tx.Id).ToArray();
+            lock (InventoryManager.MemoryPool)
+            {
+                foreach (var txId in txIds)
+                    InventoryManager.MemoryPool.Remove(txId);
+            }
+
             foreach (var tx in block.ParsedTransactions)
             {
-                if (!tx.ExecInfo.Coinbase)
-                    InventoryManager.MemoryPool.Remove(tx.Id);
-
                 tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Remove(x));
                 tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Add(x, x));
             }
@@ -173,11 +192,18 @@ namespace MinChain
             logger.LogWarning($@"Reverting Block {block.Height}:{
                 block.Id.ToString().Substring(0, 7)}.");
 
+            var txIds = (
+                from tx in block.ParsedTransactions
+                where !tx.ExecInfo.Coinbase
+                select new { Id = tx.Id, Body = tx }).ToArray();
+            lock (InventoryManager.MemoryPool)
+            {
+                foreach (var tx in txIds)
+                    InventoryManager.MemoryPool.Add(tx.Id, tx.Body);
+            }
+
             foreach (var tx in block.ParsedTransactions)
             {
-                if (!tx.ExecInfo.Coinbase)
-                    InventoryManager.MemoryPool.Add(tx.Id, tx);
-
                 tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Add(x, x));
                 tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Remove(x));
             }
@@ -205,7 +231,8 @@ namespace MinChain
                 blocks.ForEach(PurgeBlock);
             }
 
-            InventoryManager.Blocks.Remove(id);
+            lock (InventoryManager.Blocks)
+                InventoryManager.Blocks.Remove(id);
         }
 
         void Run(Block block)
