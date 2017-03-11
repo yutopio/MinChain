@@ -55,8 +55,11 @@ namespace MinChain
                     await connectionManager.ConnectToAsync(ep);
             });
 
-            miner.RecipientAddress = ByteString.CopyFrom(myKeys.Address);
-            miner.Start();
+            if (config.Mining)
+            {
+                miner.RecipientAddress = ByteString.CopyFrom(myKeys.Address);
+                miner.Start();
+            }
 
             Console.ReadLine();
 

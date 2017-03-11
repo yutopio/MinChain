@@ -18,6 +18,9 @@ namespace MinChain
         [JsonProperty(PropertyName = "genesis")]
         public string GenesisPath { get; set; }
 
+        [JsonProperty(PropertyName = "mining")]
+        public bool Mining { get; set; }
+
         public bool ShouldSerializeListenOn() => !ListenOn.IsNull();
         public bool ShouldSerializeInitialEndpoints() =>
             !InitialEndpoints.IsNullOrEmpty();
