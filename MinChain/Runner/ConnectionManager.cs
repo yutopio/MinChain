@@ -24,6 +24,7 @@ namespace MinChain
         Task listenTask;
         CancellationTokenSource tokenSource;
         CancellationToken token;
+        SemaphoreSlim sendLock;
 
         class ConnectionInfo
         {
@@ -44,6 +45,8 @@ namespace MinChain
             token = tokenSource.Token;
 
             if (localEndpoint != null) listenTask = Listen(localEndpoint);
+
+            sendLock = new SemaphoreSlim(1);
         }
 
         public void Dispose()
@@ -176,31 +179,17 @@ namespace MinChain
                 select SendAsync(message, peer));
         }
 
-        Task SendAsync(Message message, ConnectionInfo connection)
+        async Task SendAsync(Message message, ConnectionInfo connection)
         {
             // This method may be called concurrently.
-
             var bytes = Serialize(message);
-            Func<Task, Task> writeContinue = async _ =>
-            {
-                try
-                {
-                    await connection.Stream.WriteChunkAsync(bytes, token);
-                }
-                catch
-                {
-                    // Shutdown the connection whatever the exception is.
-                    // Eventually ReadLoop will take care Dispose.
-                    connection.Client.Client.Shutdown(SocketShutdown.Both);
-                }
-            };
 
-            lock (connection)
+            try
             {
-                // To ensure the sequential write.
-                return connection.LastWrite =
-                    connection.LastWrite.ContinueWith(writeContinue);
+                await sendLock.WaitAsync(token);
+                await connection.Stream.WriteChunkAsync(bytes, token);
             }
+            finally { sendLock.Release(); }
         }
 
         public IEnumerable<EndPoint> GetPeers()
