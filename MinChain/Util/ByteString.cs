@@ -1,8 +1,8 @@
-using Newtonsoft.Json;
 using System;
 using System.Linq;
-using ZeroFormatter;
-using ZeroFormatter.Formatters;
+using MessagePack;
+using MessagePack.Formatters;
+using Newtonsoft.Json;
 
 namespace MinChain
 {
@@ -13,12 +13,6 @@ namespace MinChain
     public class ByteString : IEquatable<ByteString>, IComparable<ByteString>
     {
         readonly byte[] bytes;
-
-        static ByteString()
-        {
-            Formatter<DefaultResolver, ByteString>
-                .Register(new ByteStringFormatter<DefaultResolver>());
-        }
 
         ByteString(byte[] bytes)
         {
@@ -56,25 +50,49 @@ namespace MinChain
 
         public override string ToString() => HexConvert.FromBytes(bytes);
 
-        public class ByteStringFormatter<TTypeResolver> :
-            Formatter<TTypeResolver, ByteString>
-            where TTypeResolver : ITypeResolver, new()
+        public class ByteStringFormatter : IMessagePackFormatter<ByteString>
         {
-            public override int? GetLength() => null;
+            public static ByteStringFormatter Instance = new ByteStringFormatter();
 
-            public override int Serialize(
-                ref byte[] bytes, int offset, ByteString value)
+            ByteStringFormatter() { }
+
+            public int Serialize(ref byte[] bytes, int offset,
+                ByteString value, IFormatterResolver formatterResolver)
             {
-                return Formatter<TTypeResolver, byte[]>.Default
-                    .Serialize(ref bytes, offset, value.bytes);
+                if (value == null)
+                {
+                    return MessagePackBinary.WriteNil(ref bytes, offset);
+                }
+
+                return MessagePackBinary.WriteBytes(
+                    ref bytes, offset, value.bytes);
             }
 
-            public override ByteString Deserialize(
-                ref byte[] bytes, int offset, DirtyTracker tracker,
-                out int byteSize)
+            public ByteString Deserialize(byte[] bytes, int offset,
+                IFormatterResolver formatterResolver, out int readSize)
             {
-                return new ByteString(Formatter<TTypeResolver, byte[]>.Default
-                    .Deserialize(ref bytes, offset, tracker, out byteSize));
+                if (MessagePackBinary.IsNil(bytes, offset))
+                {
+                    readSize = 1;
+                    return null;
+                }
+
+                var buffer = MessagePackBinary.ReadBytes(
+                    bytes, offset, out readSize);
+                return new ByteString(buffer);
+            }
+        }
+
+        public class ByteStringResolver : IFormatterResolver
+        {
+            public static IFormatterResolver Instance = new ByteStringResolver();
+
+            ByteStringResolver() { }
+
+            public IMessagePackFormatter<T> GetFormatter<T>()
+            {
+                return typeof(T) == typeof(ByteString) ?
+                    (IMessagePackFormatter<T>)ByteStringFormatter.Instance : null;
             }
         }
 

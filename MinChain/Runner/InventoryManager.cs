@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using static MinChain.InventoryMessageType;
-using static ZeroFormatter.ZeroFormatterSerializer;
+using static MessagePack.MessagePackSerializer;
 
 namespace MinChain
 {

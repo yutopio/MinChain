@@ -1,48 +1,48 @@
+using MessagePack;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ZeroFormatter;
 
 namespace MinChain
 {
-    [ZeroFormattable]
+    [MessagePackObject]
     public class Block
     {
-        [IgnoreFormat, JsonIgnore]
+        [IgnoreMember, JsonIgnore]
         public byte[] Original { get; set; }
 
-        [IgnoreFormat, JsonProperty(PropertyName = "id")]
+        [IgnoreMember, JsonProperty(PropertyName = "id")]
         public ByteString Id { get; set; }
 
-        [Index(0), JsonProperty(PropertyName = "prev")]
+        [Key(0), JsonProperty(PropertyName = "prev")]
         public virtual ByteString PreviousHash { get; set; }
 
-        [Index(1), JsonProperty(PropertyName = "difficulty")]
+        [Key(1), JsonProperty(PropertyName = "difficulty")]
         public virtual double Difficulty { get; set; }
 
-        [Index(2), JsonProperty(PropertyName = "nonce")]
+        [Key(2), JsonProperty(PropertyName = "nonce")]
         public virtual ulong Nonce { get; set; }
 
-        [Index(3), JsonProperty(PropertyName = "timestamp")]
+        [Key(3), JsonProperty(PropertyName = "timestamp")]
         public virtual DateTime Timestamp { get; set; }
 
-        [Index(4), JsonProperty(PropertyName = "root")]
+        [Key(4), JsonProperty(PropertyName = "root")]
         public virtual byte[] TransactionRootHash { get; set; }
 
-        [Index(5), JsonIgnore]
+        [Key(5), JsonIgnore]
         public virtual IList<ByteString> TransactionIds { get; set; }
 
-        [Index(6), JsonIgnore]
+        [Key(6), JsonIgnore]
         public virtual IList<byte[]> Transactions { get; set; }
 
-        [IgnoreFormat, JsonProperty(PropertyName = "height")]
+        [IgnoreMember, JsonProperty(PropertyName = "height")]
         public int Height { get; set; }
 
-        [IgnoreFormat, JsonProperty(PropertyName = "txs")]
+        [IgnoreMember, JsonProperty(PropertyName = "txs")]
         public Transaction[] ParsedTransactions { get; set; }
 
-        [IgnoreFormat, JsonIgnore]
+        [IgnoreMember, JsonIgnore]
         public double TotalDifficulty { get; set; }
 
         public Block Clone() =>
@@ -64,25 +64,25 @@ namespace MinChain
             };
     }
 
-    [ZeroFormattable]
+    [MessagePackObject]
     public class Transaction
     {
-        [IgnoreFormat, JsonIgnore]
+        [IgnoreMember, JsonIgnore]
         public byte[] Original { get; set; }
 
-        [IgnoreFormat, JsonProperty(PropertyName = "id")]
+        [IgnoreMember, JsonProperty(PropertyName = "id")]
         public ByteString Id { get; set; }
 
-        [Index(0), JsonProperty(PropertyName = "timestamp")]
+        [Key(0), JsonProperty(PropertyName = "timestamp")]
         public virtual DateTime Timestamp { get; set; }
 
-        [Index(1), JsonProperty(PropertyName = "in")]
+        [Key(1), JsonProperty(PropertyName = "in")]
         public virtual IList<InEntry> InEntries { get; set; }
 
-        [Index(2), JsonProperty(PropertyName = "out")]
+        [Key(2), JsonProperty(PropertyName = "out")]
         public virtual IList<OutEntry> OutEntries { get; set; }
 
-        [IgnoreFormat, JsonIgnore]
+        [IgnoreMember, JsonIgnore]
         public TransactionExecInformation ExecInfo { get; set; }
 
         public Transaction Clone() =>
@@ -97,19 +97,19 @@ namespace MinChain
             };
     }
 
-    [ZeroFormattable]
+    [MessagePackObject]
     public class InEntry
     {
-        [Index(0), JsonProperty(PropertyName = "tx")]
+        [Key(0), JsonProperty(PropertyName = "tx")]
         public virtual ByteString TransactionId { get; set; }
 
-        [Index(1), JsonProperty(PropertyName = "i")]
+        [Key(1), JsonProperty(PropertyName = "i")]
         public virtual ushort OutEntryIndex { get; set; }
 
-        [Index(2), JsonProperty(PropertyName = "pub")]
+        [Key(2), JsonProperty(PropertyName = "pub")]
         public virtual byte[] PublicKey { get; set; }
 
-        [Index(3), JsonProperty(PropertyName = "sig")]
+        [Key(3), JsonProperty(PropertyName = "sig")]
         public virtual byte[] Signature { get; set; }
 
         public InEntry Clone() =>
@@ -122,13 +122,13 @@ namespace MinChain
             };
     }
 
-    [ZeroFormattable]
+    [MessagePackObject]
     public class OutEntry
     {
-        [Index(0), JsonProperty(PropertyName = "to")]
+        [Key(0), JsonProperty(PropertyName = "to")]
         public virtual ByteString RecipientHash { get; set; }
 
-        [Index(1), JsonProperty(PropertyName = "val")]
+        [Key(1), JsonProperty(PropertyName = "val")]
         public virtual ulong Amount { get; set; }
 
         public OutEntry Clone() =>

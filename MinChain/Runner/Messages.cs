@@ -1,6 +1,6 @@
 using System.Collections.Generic;
-using ZeroFormatter;
-using static ZeroFormatter.ZeroFormatterSerializer;
+using MessagePack;
+using static MessagePack.MessagePackSerializer;
 
 namespace MinChain
 {
@@ -10,26 +10,26 @@ namespace MinChain
         Inventory
     }
 
-    [ZeroFormattable]
+    [MessagePackObject]
     public class Message
     {
-        [Index(0)]
+        [Key(0)]
         public virtual MessageType Type { get; set; }
 
-        [Index(1)]
+        [Key(1)]
         public virtual byte[] Payload { get; set; }
     }
 
-    [ZeroFormattable]
+    [MessagePackObject]
     public class Hello
     {
-        [Index(0)]
+        [Key(0)]
         public virtual IList<string> MyPeers { get; set; }
 
-        [Index(1)]
+        [Key(1)]
         public virtual ByteString Genesis { get; set; }
 
-        [Index(2)]
+        [Key(2)]
         public virtual IList<ByteString> KnownBlocks { get; set; }
 
         public static implicit operator Message(Hello message)
@@ -47,19 +47,19 @@ namespace MinChain
         Advertise, Request, Body
     }
 
-    [ZeroFormattable]
+    [MessagePackObject]
     public class InventoryMessage
     {
-        [Index(0)]
+        [Key(0)]
         public virtual InventoryMessageType Type { get; set; }
 
-        [Index(1)]
+        [Key(1)]
         public virtual ByteString ObjectId { get; set; }
 
-        [Index(2)]
+        [Key(2)]
         public virtual bool IsBlock { get; set; }
 
-        [Index(3)]
+        [Key(3)]
         public virtual byte[] Data { get; set; }
 
         public static implicit operator Message(InventoryMessage message)

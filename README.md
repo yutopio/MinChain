@@ -10,9 +10,9 @@ External libraries
 
 This software uses the following external library:
 
-* ZeroFormatter: Copyright (c) 2016 Yoshifumi Kawai
+* MessagePack for C#: Copyright (c) 2017 Yoshifumi Kawai
   Licensed under the MIT License. See LICENSE for details.
-  Website: https://github.com/neuecc/ZeroFormatter
+  Website: https://github.com/neuecc/MessagePack-CSharp
 
 * Newtonsoft Json.NET: Copyright (c) 2007 James Newton-King
   Licensed under The MIT License. See LICENSE.md for details.

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using static ZeroFormatter.ZeroFormatterSerializer;
+using static MessagePack.MessagePackSerializer;
 
 namespace MinChain
 {

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using static ZeroFormatter.ZeroFormatterSerializer;
+using static MessagePack.MessagePackSerializer;
 
 namespace MinChain
 {

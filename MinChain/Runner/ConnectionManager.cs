@@ -6,7 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using static ZeroFormatter.ZeroFormatterSerializer;
+using static MessagePack.MessagePackSerializer;
 
 namespace MinChain
 {

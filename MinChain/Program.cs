@@ -1,3 +1,4 @@
+using MessagePack.Resolvers;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
@@ -37,7 +38,12 @@ namespace MinChain
                 }
             };
 
-            ByteString.CopyFrom(new byte[0]);
+            CompositeResolver.RegisterAndSetAsDefault(
+                ByteString.ByteStringResolver.Instance,
+                BuiltinResolver.Instance,
+                DynamicEnumResolver.Instance,
+                DynamicGenericResolver.Instance,
+                DynamicObjectResolver.Instance);
 
             if (args.Length == 0)
             {

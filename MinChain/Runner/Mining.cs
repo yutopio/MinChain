@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using static MinChain.BlockchainUtil;
-using static ZeroFormatter.ZeroFormatterSerializer;
+using static MessagePack.MessagePackSerializer;
 
 namespace MinChain
 {
