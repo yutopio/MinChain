@@ -9,6 +9,7 @@ namespace MinChain
     public class InventoryManager
     {
         public const int MaximumBlockSize = 1024 * 1024; // 1MB
+        public const int MaximumTransactionSize = 2 * 1024; // 2KB
 
         public Dictionary<ByteString, byte[]> Blocks { get; }
             = new Dictionary<ByteString, byte[]>();
@@ -67,27 +68,15 @@ namespace MinChain
 
         async Task HandleBody(InventoryMessage message, int peerId)
         {
-            // Data should not exceed the maximum size.
-            var data = message.Data;
-            if (data.Length > MaximumBlockSize) throw new ArgumentException();
-
-            var id = message.IsBlock ?
-                BlockchainUtil.ComputeBlockId(data) :
-                Hash.ComputeDoubleSHA256(data);
-            if (!ByteString.CopyFrom(id).Equals(message.ObjectId)) return;
-
             if (message.IsBlock)
             {
-                lock (Blocks)
-                {
-                    if (Blocks.ContainsKey(message.ObjectId)) return;
-                    Blocks.Add(message.ObjectId, data);
-                }
+                var block = TryLoadBlock(message.ObjectId, message.Data);
+                if (block.IsNull()) return;
 
-                var block = BlockchainUtil.DeserializeBlock(data);
                 var prevId = block.PreviousHash;
                 if (!Blocks.ContainsKey(prevId))
                 {
+                    // Otherwise, ask the sending peer to provide previous block.
                     await ConnectionManager.SendAsync(new InventoryMessage
                     {
                         Type = Request,
@@ -95,28 +84,70 @@ namespace MinChain
                         ObjectId = prevId,
                     }, peerId);
                 }
-
-                Executor.ProcessBlock(block);
             }
             else
             {
-                if (MemoryPool.ContainsKey(message.ObjectId)) return;
-
-                var tx = BlockchainUtil.DeserializeTransaction(data);
-
-                // Ignore the coinbase transactions.
-                if (tx.InEntries.Count == 0) return;
-
-                lock (MemoryPool)
-                {
-                    if (MemoryPool.ContainsKey(message.ObjectId)) return;
-                    MemoryPool.Add(message.ObjectId, tx);
-                }
+                var success = TryAddTransactionToMemoryPool(
+                    message.ObjectId, message.Data);
+                if (!success) return;
             }
 
             message.Type = Advertise;
             message.Data = null;
             await ConnectionManager.BroadcastAsync(message, peerId);
+        }
+
+        public Block TryLoadBlock(ByteString id, byte[] data)
+        {
+            // Data should not exceed the maximum size.
+            if (data.Length > MaximumBlockSize)
+                throw new ArgumentException(nameof(data));
+
+            // Integrity check.
+            var computedId = BlockchainUtil.ComputeBlockId(data);
+            if (!ByteString.CopyFrom(computedId).Equals(id))
+                throw new ArgumentException(nameof(id));
+
+            // Try to deserialize the data for format validity check.
+            var block = BlockchainUtil.DeserializeBlock(data);
+
+            lock (Blocks)
+            {
+                if (Blocks.ContainsKey(id)) return null;
+                Blocks.Add(id, data);
+            }
+
+            // Schedule the block for execution.
+            Executor.ProcessBlock(block);
+
+            return block;
+        }
+
+        bool TryAddTransactionToMemoryPool(ByteString id, byte[] data)
+        {
+            // Data should not exceed the maximum size.
+            if (data.Length > MaximumTransactionSize)
+                throw new ArgumentException();
+
+            // Integrity check.
+            var computedId = Hash.ComputeDoubleSHA256(data);
+            if (!ByteString.CopyFrom(computedId).Equals(id))
+                throw new ArgumentException();
+
+            if (MemoryPool.ContainsKey(id)) return false;
+
+            var tx = BlockchainUtil.DeserializeTransaction(data);
+
+            // Ignore the coinbase transactions.
+            if (tx.InEntries.Count == 0) return false;
+
+            lock (MemoryPool)
+            {
+                if (MemoryPool.ContainsKey(id)) return false;
+                MemoryPool.Add(id, tx);
+            }
+
+            return true;
         }
     }
 }
