@@ -46,7 +46,7 @@ namespace MinChain
             miner.Executor = executor;
 
             inventoryManager.Blocks.Add(genesis.Id, genesis.Original);
-            executor.ProcessBlock(genesis.Original, genesis.PreviousHash);
+            executor.ProcessBlock(genesis);
 
             connectionManager.Start(config.ListenOn);
             var t = Task.Run(async () =>
