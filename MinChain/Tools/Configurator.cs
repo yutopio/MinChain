@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using System;
+using System.IO;
 using System.Net;
 
 namespace MinChain
@@ -18,6 +19,7 @@ namespace MinChain
                     InitialEndpoints = new[] { defaultRemote },
                     KeyPairPath = "<YOUR OWN KEYPAIR>.json",
                     GenesisPath = "<GENESIS BLOCK>.bin",
+                    StoragePath = Path.Combine(Environment.CurrentDirectory, "blocks"),
                     Mining = true,
                 },
                 Formatting.Indented);

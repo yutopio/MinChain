@@ -18,6 +18,9 @@ namespace MinChain
         [JsonProperty(PropertyName = "genesis")]
         public string GenesisPath { get; set; }
 
+        [JsonProperty(PropertyName = "storage")]
+        public string StoragePath { get; set; }
+
         [JsonProperty(PropertyName = "mining")]
         public bool Mining { get; set; }
 
@@ -28,6 +31,8 @@ namespace MinChain
             !string.IsNullOrWhiteSpace(KeyPairPath);
         public bool ShouldSerializeGenesisPath() =>
             !string.IsNullOrWhiteSpace(GenesisPath);
+        public bool ShouldSerializeStoragePath() =>
+            !string.IsNullOrWhiteSpace(StoragePath);
     }
 
     public class KeyPair
