@@ -83,6 +83,9 @@ namespace MinChain
             var block = BlockchainUtil.DeserializeBlock(data);
             block.Height = prev.Height + 1;
             block.TotalDifficulty = prev.TotalDifficulty + block.Difficulty;
+
+            // Avoid processing duplicate block from the past.
+            if (Blocks.ContainsKey(block.Id)) return;
             Blocks.Add(block.Id, block);
 
             // If the block difficulty does not surpass the current latest,
