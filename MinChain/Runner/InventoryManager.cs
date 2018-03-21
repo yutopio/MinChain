@@ -94,10 +94,8 @@ namespace MinChain
                         ObjectId = prevId,
                     }, peerId);
                 }
-                else
-                {
-                    Executor.ProcessBlock(data, prevId);
-                }
+
+                Executor.ProcessBlock(data, prevId);
             }
             else
             {
