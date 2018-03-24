@@ -346,7 +346,8 @@ namespace MinChain
 
                 // Recipient address check.
                 var addr = BlockchainUtil.ToAddress(inEntry.PublicKey);
-                var redeemable = txo.Recipient.Equals(addr);
+                var redeemable = txo.Recipient.Equals(
+                    ByteString.CopyFrom(addr));
 
                 // Sum all the reedemable.
                 inSum = checked(inSum + txo.Amount);
