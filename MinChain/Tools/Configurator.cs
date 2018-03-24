@@ -7,6 +7,7 @@ namespace MinChain
     public class Configurator
     {
         public const int DefaultPort = 9333;
+        public const int DefaultWebApiPort = 8080;
 
         public static void Exec(string[] args)
         {
@@ -16,6 +17,7 @@ namespace MinChain
                 {
                     ListenOn = new IPEndPoint(IPAddress.Any, DefaultPort),
                     InitialEndpoints = new[] { defaultRemote },
+                    WebApiPort = DefaultWebApiPort,
                     KeyPairPath = "<YOUR OWN KEYPAIR>.json",
                     GenesisPath = "<GENESIS BLOCK>.bin",
                     Mining = true,
