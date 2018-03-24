@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using static MessagePack.MessagePackSerializer;
 
 namespace MinChain
@@ -38,19 +39,35 @@ namespace MinChain
             return null;
         }
 
-        public static byte[] RootHashTransactionIds(IList<ByteString> txIds)
-        {
-            const int HashLength = 32;
+        public static byte[] RootHashTransactionIds(IList<ByteString> txIds) =>
+            ComputeMerkleRoot(txIds.Select(x => x.ToByteArray()).ToArray());
 
-            var i = 0;
-            var ids = new byte[txIds.Count * HashLength];
-            foreach (var txId in txIds)
+        public static byte[] ComputeMerkleRoot(byte[][] hashes)
+        {
+            // If no transaction is present, Merkle root should be 0000...0
+            var count = hashes.Length;
+            if (count == 0) return new byte[32];
+
+            while (count > 1)
             {
-                Buffer.BlockCopy(
-                    txId.ToByteArray(), 0, ids, i++ * HashLength, HashLength);
+                for (var i = 0; i < count / 2; i++)
+                {
+                    hashes[i] = Hash.ComputeDoubleSHA256(
+                        hashes[i * 2].Concat(hashes[i * 2 + 1]).ToArray());
+                }
+
+                if (count % 2 == 1)
+                {
+                    hashes[count / 2] = hashes[count - 1];
+                    count = count / 2 + 1;
+                }
+                else
+                {
+                    count = count / 2;
+                }
             }
 
-            return Hash.ComputeDoubleSHA256(ids);
+            return hashes[0];
         }
 
         public static Block DeserializeBlock(byte[] data)
