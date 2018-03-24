@@ -17,3 +17,7 @@ This software uses the following external library:
 * Newtonsoft Json.NET: Copyright (c) 2007 James Newton-King
   Licensed under The MIT License. See LICENSE.md for details.
   Website: http://www.newtonsoft.com/json
+
+* Bouncy Castle: Copyright (c) 2000 - 2017 The Legion of the Bouncy Castle Inc.
+  Licensed under The MIT License. See README.md for details.
+  Website: https://www.bouncycastle.org/csharp/
