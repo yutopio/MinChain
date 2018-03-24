@@ -32,14 +32,8 @@ namespace MinChain
         // of fund transferred during the transaction that is not redeemed yet.
         // UTXO is spent once listed as a future transaction input and removed
         // from the set of UTXOs.
-        //
-        // This dictionary is used as a set of UTXOs.  The justification for
-        // using Dictionary data structure is to query UTXO from the partially
-        // constructed UTXO instance with TxID and Output index.  This is
-        // possible because TransactionOutput implements comparator which use
-        // TxID and output index for the comparison.
-        public Dictionary<TransactionOutput, TransactionOutput> Utxos { get; }
-            = new Dictionary<TransactionOutput, TransactionOutput>();
+        public HashSet<TransactionOutput> Utxos { get; }
+            = new HashSet<TransactionOutput>();
 
         public Block Latest { get; private set; }
 
@@ -184,7 +178,7 @@ namespace MinChain
             foreach (var tx in block.ParsedTransactions)
             {
                 tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Remove(x));
-                tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Add(x, x));
+                tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Add(x));
             }
 
             Latest = block;
@@ -208,7 +202,7 @@ namespace MinChain
 
             foreach (var tx in block.ParsedTransactions)
             {
-                tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Add(x, x));
+                tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Add(x));
                 tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Remove(x));
             }
 
