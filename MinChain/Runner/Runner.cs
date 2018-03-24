@@ -17,7 +17,7 @@ namespace MinChain
             new Runner().RunInternal(args);
 
         Configuration config;
-        KeyPair myKeys;
+        Wallet wallet;
         Block genesis;
 
         ConnectionManager connectionManager;
@@ -57,7 +57,7 @@ namespace MinChain
 
             if (config.Mining)
             {
-                miner.RecipientAddress = ByteString.CopyFrom(myKeys.Address);
+                miner.RecipientAddress = wallet.Address;
                 miner.Start();
             }
 
@@ -89,7 +89,8 @@ namespace MinChain
 
             try
             {
-                myKeys = KeyPair.LoadFrom(config.KeyPairPath);
+                var myKey = KeyPair.LoadFrom(config.KeyPairPath);
+                wallet = new Wallet(myKey);
             }
             catch (Exception exp)
             {
