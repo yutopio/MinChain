@@ -12,6 +12,9 @@ namespace MinChain
         [JsonProperty(PropertyName = "peers")]
         public IPEndPoint[] InitialEndpoints { get; set; }
 
+        [JsonProperty(PropertyName = "apiport")]
+        public ushort? WebApiPort { get; set; }
+
         [JsonProperty(PropertyName = "keypair")]
         public string KeyPairPath { get; set; }
 
@@ -24,15 +27,21 @@ namespace MinChain
         [JsonProperty(PropertyName = "mining")]
         public bool Mining { get; set; }
 
+        [JsonProperty(PropertyName = "mining_dop")]
+        public uint? MiningDegreeOfParallelism { get; set; }
+
         public bool ShouldSerializeListenOn() => !ListenOn.IsNull();
         public bool ShouldSerializeInitialEndpoints() =>
             !InitialEndpoints.IsNullOrEmpty();
+        public bool ShouldSerializeWebApiPort() => WebApiPort.HasValue;
         public bool ShouldSerializeKeyPairPath() =>
             !string.IsNullOrWhiteSpace(KeyPairPath);
         public bool ShouldSerializeGenesisPath() =>
             !string.IsNullOrWhiteSpace(GenesisPath);
         public bool ShouldSerializeStoragePath() =>
             !string.IsNullOrWhiteSpace(StoragePath);
+        public bool ShouldSerializeMiningDegreeOfParallelism() =>
+            MiningDegreeOfParallelism.HasValue;
     }
 
     public class KeyPair
