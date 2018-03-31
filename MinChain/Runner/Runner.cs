@@ -75,7 +75,8 @@ namespace MinChain
 
             if (config.WebApiPort.HasValue)
             {
-                var handler = new WebApiHandler(config, connectionManager,
+                var handler = new WebApiHandler(
+                    config, wallet, connectionManager,
                     inventoryManager, executor, miner);
 
                 var webHost = new WebHostBuilder()

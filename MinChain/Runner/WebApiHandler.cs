@@ -9,17 +9,20 @@ namespace MinChain
     public class WebApiHandler
     {
         readonly Configuration config;
+        readonly Wallet wallet;
         readonly ConnectionManager connectionManager;
         readonly InventoryManager inventoryManager;
         readonly Executor executor;
         readonly Mining miner;
 
         public WebApiHandler(
-            Configuration config, ConnectionManager connectionManager,
+            Configuration config, Wallet wallet,
+            ConnectionManager connectionManager,
             InventoryManager inventoryManager, Executor executor,
             Mining miner)
         {
             this.config = config;
+            this.wallet = wallet;
             this.connectionManager = connectionManager;
             this.inventoryManager = inventoryManager;
             this.executor = executor;
@@ -63,6 +66,7 @@ namespace MinChain
                 case "peers": return connectionManager.GetPeers().ToArray();
                 case "mempool": return inventoryManager.MemoryPool.Keys.ToArray();
                 case "utxo": return executor.Utxos.ToArray();
+                case "balance": return wallet.GetBalance(executor.Utxos);
                 case "block": return HandleBlock(tail);
                 case "mining": return HandleMining(tail);
                 default: return null;
