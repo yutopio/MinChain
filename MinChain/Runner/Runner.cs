@@ -19,7 +19,7 @@ namespace MinChain
             new Runner().RunInternal(args);
 
         Configuration config;
-        KeyPair myKeys;
+        Wallet wallet;
         Block genesis;
 
         ConnectionManager connectionManager;
@@ -69,7 +69,7 @@ namespace MinChain
 
             if (config.Mining)
             {
-                miner.RecipientAddress = ByteString.CopyFrom(myKeys.Address);
+                miner.RecipientAddress = wallet.Address;
                 miner.Start();
             }
 
@@ -86,9 +86,49 @@ namespace MinChain
                 webHost.RunAsync();
             }
 
-            Console.ReadLine();
+            ReadConsole();
 
             connectionManager.Dispose();
+        }
+
+        void ReadConsole()
+        {
+        Start:
+            var line = Console.ReadLine();
+            var input = line.Split(new[] { ' ' },
+                StringSplitOptions.RemoveEmptyEntries);
+
+            switch (input.Length != 0 ? input[0] : null)
+            {
+                case "balance":
+                    Console.WriteLine(wallet.GetBalance(executor.Utxos));
+                    break;
+
+                case "send":
+                    try
+                    {
+                        var recipient = Convert.FromBase64String(input[1]);
+                        var amount = ulong.Parse(input[2]);
+                        var tx = wallet.SendTo(executor.Utxos,
+                            ByteString.CopyFrom(recipient), amount);
+
+                        inventoryManager.HandleMessage(new InventoryMessage
+                        {
+                            Type = InventoryMessageType.Body,
+                            IsBlock = false,
+                            ObjectId = tx.Id,
+                            Data = tx.Original,
+                        }, -1);
+                    }
+                    catch (Exception e) { Console.WriteLine(e); }
+                    break;
+
+                case "exit":
+                case "quit":
+                    return;
+            }
+
+            goto Start;
         }
 
         bool LoadConfiguration(string[] args)
@@ -114,7 +154,8 @@ namespace MinChain
 
             try
             {
-                myKeys = KeyPair.LoadFrom(config.KeyPairPath);
+                var myKey = KeyPair.LoadFrom(config.KeyPairPath);
+                wallet = new Wallet(myKey);
             }
             catch (Exception exp)
             {
