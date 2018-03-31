@@ -32,7 +32,7 @@ namespace MinChain
             connectionManager = new ConnectionManager();
             inventoryManager = new InventoryManager();
             executor = new Executor();
-            miner = new Mining();
+            miner = new Mining(config.MiningDegreeOfParallelism);
 
             connectionManager.NewConnectionEstablished += NewPeer;
             connectionManager.MessageReceived += HandleMessage;

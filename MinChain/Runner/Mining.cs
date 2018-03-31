@@ -23,6 +23,14 @@ namespace MinChain
         public bool IsMining { get; private set; }
         CancellationTokenSource cts;
 
+        public uint DegreeOfParallelism { get; set; }
+
+        public Mining(uint? degreeOfParallelism = null)
+        {
+            DegreeOfParallelism =
+                degreeOfParallelism ?? (uint)Environment.ProcessorCount;
+        }
+
         public static Transaction CreateCoinbase(int height, byte[] recipient)
         {
             var tx = new Transaction
@@ -44,7 +52,7 @@ namespace MinChain
             return tx;
         }
 
-        public static bool Mine(Block seed,
+        public static async Task<Block> MineAsync(Block seed, uint degree,
             CancellationToken token = default(CancellationToken))
         {
             var rnd = new Random();
@@ -52,9 +60,33 @@ namespace MinChain
             rnd.NextBytes(nonceSeed);
 
             ulong nonce = BitConverter.ToUInt64(nonceSeed, 0);
-            while (!token.IsCancellationRequested)
+
+            var cts = new CancellationTokenSource();
+            var miners = new Task<Block>[degree];
+            for (var i = 0; i < degree; i++)
             {
                 seed.Nonce = nonce++;
+                var mySeed = Deserialize<Block>(Serialize(seed));
+                miners[i] = Task.Run(() => MineStep(mySeed, degree, cts.Token));
+            }
+
+            Task<Block> completed;
+            using (token.Register(cts.Cancel))
+            {
+                completed = await Task.WhenAny(miners);
+                cts.Cancel();
+                await Task.WhenAll(miners);
+            }
+
+            return completed.Result;
+        }
+
+        static Block MineStep(Block seed, uint step,
+            CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                seed.Nonce = unchecked(seed.Nonce + step);
                 seed.Timestamp = DateTime.UtcNow;
 
                 var data = Serialize(seed);
@@ -63,11 +95,11 @@ namespace MinChain
                 {
                     seed.Id = ByteString.CopyFrom(blockId);
                     seed.Original = data;
-                    return true;
+                    return seed;
                 }
             }
 
-            return false;
+            return null;
         }
 
         public void Start()
@@ -98,7 +130,7 @@ namespace MinChain
             cts = null;
         }
 
-        void MineFromLastBlock(CancellationToken token)
+        async Task MineFromLastBlock(CancellationToken token)
         {
             // Takeout memory pool transactions.
             var size = 350; // Estimated block header + coinbase size
@@ -157,8 +189,10 @@ namespace MinChain
                 TransactionRootHash = RootHashTransactionIds(txIds),
             };
 
-            if (!Mine(block, token)) return;
+            var mined = await MineAsync(block, DegreeOfParallelism, token);
+            if (mined.IsNull()) return;
 
+            block = mined;
             block.TransactionIds = txIds;
             block.Transactions = txs.Select(x => x.Original).ToList();
             block.ParsedTransactions = txs.ToArray();
@@ -173,8 +207,10 @@ namespace MinChain
                 IsBlock = true,
                 Type = InventoryMessageType.Body,
             };
+#pragma warning disable CS4014
             ConnectionManager.BroadcastAsync(msg);
             InventoryManager.HandleMessage(msg, -1);
+#pragma warning restore CS4014
         }
     }
 }

@@ -21,6 +21,9 @@ namespace MinChain
         [JsonProperty(PropertyName = "mining")]
         public bool Mining { get; set; }
 
+        [JsonProperty(PropertyName = "mining_dop")]
+        public uint? MiningDegreeOfParallelism { get; set; }
+
         public bool ShouldSerializeListenOn() => !ListenOn.IsNull();
         public bool ShouldSerializeInitialEndpoints() =>
             !InitialEndpoints.IsNullOrEmpty();
@@ -28,6 +31,8 @@ namespace MinChain
             !string.IsNullOrWhiteSpace(KeyPairPath);
         public bool ShouldSerializeGenesisPath() =>
             !string.IsNullOrWhiteSpace(GenesisPath);
+        public bool ShouldSerializeMiningDegreeOfParallelism() =>
+            MiningDegreeOfParallelism.HasValue;
     }
 
     public class KeyPair
