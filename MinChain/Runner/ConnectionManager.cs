@@ -165,7 +165,8 @@ namespace MinChain
 
         public Task SendAsync(Message message, int peerId)
         {
-            var peer = peers[peerId];
+            var peer = peerId < 0 || peerId >= peers.Count ?
+                null : peers[peerId];
             return peer.IsNull() ?
                 Task.CompletedTask :
                 SendAsync(message, peer);
