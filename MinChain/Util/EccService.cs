@@ -1,21 +1,40 @@
 using MessagePack;
+using Org.BouncyCastle.Asn1.Sec;
+using Org.BouncyCastle.Math;
+using Org.BouncyCastle.Security;
+using System;
 using System.Security.Cryptography;
 
 namespace MinChain
 {
     public static class EccService
     {
+        // NIST P-256 Curve (aka. secp256r1)
+        public const string CurveName = "secp256r1";
         public static readonly ECCurve Curve = ECCurve.NamedCurves.nistP256;
 
         public static void GenerateKey(
             out byte[] privateKey, out byte[] publicKey)
         {
-            ECParameters param;
-            using (var dsa = ECDsa.Create(Curve))
-                param = dsa.ExportParameters(true);
+            var rnd = new SecureRandom();
+            rnd.SetSeed(DateTime.UtcNow.Ticks);
 
-            privateKey = param.D;
-            publicKey = ToBytes(param.Q);
+            var curve = SecNamedCurves.GetByName(CurveName);
+            var n = curve.N;
+
+            BigInteger d;
+            do
+            {
+                d = new BigInteger(n.BitLength, rnd).SetBit(n.BitLength - 1);
+            } while (d.CompareTo(n) >= 0);
+            privateKey = d.ToByteArrayUnsigned();
+
+            var pubPoint = curve.G.Multiply(d).Normalize();
+            publicKey = ToBytes(new ECPoint
+            {
+                X = pubPoint.XCoord.GetEncoded(),
+                Y = pubPoint.YCoord.GetEncoded(),
+            });
         }
 
         public static byte[] Sign(

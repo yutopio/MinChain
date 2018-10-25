@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
@@ -17,12 +19,13 @@ namespace MinChain
             new Runner().RunInternal(args);
 
         Configuration config;
-        KeyPair myKeys;
+        Wallet wallet;
         Block genesis;
 
         ConnectionManager connectionManager;
         InventoryManager inventoryManager;
         Executor executor;
+        Storage storage;
         Mining miner;
 
         void RunInternal(string[] args)
@@ -32,11 +35,11 @@ namespace MinChain
             connectionManager = new ConnectionManager();
             inventoryManager = new InventoryManager();
             executor = new Executor();
-            miner = new Mining();
+            miner = new Mining(config.MiningDegreeOfParallelism);
 
             connectionManager.NewConnectionEstablished += NewPeer;
             connectionManager.MessageReceived += HandleMessage;
-            executor.BlockExecuted += miner.Notify;
+            executor.BlockExecuted += _ => miner.Notify();
 
             inventoryManager.ConnectionManager = connectionManager;
             inventoryManager.Executor = executor;
@@ -48,6 +51,15 @@ namespace MinChain
             inventoryManager.Blocks.Add(genesis.Id, genesis.Original);
             executor.ProcessBlock(genesis);
 
+            if (!storage.IsNull())
+            {
+                executor.BlockExecuted +=
+                    block => storage.Save(block.Id, block.Original);
+
+                foreach ((var id, var data) in storage.LoadAll())
+                    inventoryManager.TryLoadBlock(id, data);
+            }
+
             connectionManager.Start(config.ListenOn);
             var t = Task.Run(async () =>
             {
@@ -57,13 +69,67 @@ namespace MinChain
 
             if (config.Mining)
             {
-                miner.RecipientAddress = ByteString.CopyFrom(myKeys.Address);
+                miner.RecipientAddress = wallet.Address;
                 miner.Start();
             }
 
-            Console.ReadLine();
+            if (config.WebApiPort.HasValue)
+            {
+                var handler = new WebApiHandler(
+                    config, wallet, connectionManager,
+                    inventoryManager, executor, miner);
+
+                var webHost = new WebHostBuilder()
+                    .UseKestrel()
+                    .UseUrls($"http://*:{config.WebApiPort}")
+                    .Configure(app => app.Run(handler.HandleWebRequest))
+                    .Build();
+                webHost.RunAsync();
+            }
+
+            ReadConsole();
 
             connectionManager.Dispose();
+        }
+
+        void ReadConsole()
+        {
+        Start:
+            var line = Console.ReadLine();
+            var input = line.Split(new[] { ' ' },
+                StringSplitOptions.RemoveEmptyEntries);
+
+            switch (input.Length != 0 ? input[0] : null)
+            {
+                case "balance":
+                    Console.WriteLine(wallet.GetBalance(executor.Utxos));
+                    break;
+
+                case "send":
+                    try
+                    {
+                        var recipient = Convert.FromBase64String(input[1]);
+                        var amount = ulong.Parse(input[2]);
+                        var tx = wallet.SendTo(executor.Utxos,
+                            ByteString.CopyFrom(recipient), amount);
+
+                        inventoryManager.HandleMessage(new InventoryMessage
+                        {
+                            Type = InventoryMessageType.Body,
+                            IsBlock = false,
+                            ObjectId = tx.Id,
+                            Data = tx.Original,
+                        }, -1);
+                    }
+                    catch (Exception e) { Console.WriteLine(e); }
+                    break;
+
+                case "exit":
+                case "quit":
+                    return;
+            }
+
+            goto Start;
         }
 
         bool LoadConfiguration(string[] args)
@@ -89,7 +155,8 @@ namespace MinChain
 
             try
             {
-                myKeys = KeyPair.LoadFrom(config.KeyPairPath);
+                var myKey = KeyPair.LoadFrom(config.KeyPairPath);
+                wallet = new Wallet(myKey);
             }
             catch (Exception exp)
             {
@@ -108,6 +175,20 @@ namespace MinChain
             {
                 logger.LogError(
                     $"Failed to load the genesis from {config.GenesisPath}.",
+                    exp);
+                return false;
+            }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(config.StoragePath))
+                    storage = new Storage(config.StoragePath);
+            }
+            catch (Exception exp)
+            {
+                logger.LogError(
+                    $@"Failed to set up blockchain storage at {
+                        config.StoragePath}.",
                     exp);
                 return false;
             }

@@ -41,7 +41,7 @@ namespace MinChain
                 ParsedTransactions = new[] { tx }
             };
 
-            Mining.Mine(b);
+            b = Mining.MineAsync(b, 1).Result;
 
             var json = JsonConvert.SerializeObject(b, Formatting.Indented);
             WriteLine(json);

@@ -37,7 +37,7 @@ namespace MinChain
 
         public Block Latest { get; private set; }
 
-        public event Action BlockExecuted;
+        public event Action<Block> BlockExecuted;
 
         public Executor()
         {
@@ -181,8 +181,7 @@ namespace MinChain
                 tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Add(x));
             }
 
-            Latest = block;
-            BlockExecuted();
+            BlockExecuted(Latest = block);
         }
 
         void Revert(Block block)
@@ -206,8 +205,7 @@ namespace MinChain
                 tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Remove(x));
             }
 
-            Latest = Blocks[block.PreviousHash];
-            BlockExecuted();
+            BlockExecuted(Latest = Blocks[block.PreviousHash]);
         }
 
         void PurgeBlock(ByteString id)
