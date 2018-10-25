@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using static MessagePack.MessagePackSerializer;
@@ -157,6 +158,40 @@ namespace MinChain
                     "Failed to load configuration file. Run 'config' command.",
                     exp);
                 return false;
+            }
+
+
+            IPEndPoint Parse(string text)
+            {
+                IPAddress Resolve(string hostNameOrAddress)
+                {
+                    return
+                        IPAddress.TryParse(hostNameOrAddress, out var addr) ? addr :
+                        Dns.GetHostAddresses(hostNameOrAddress)[0];
+                }
+
+                var array = text.Split(':');
+                return new IPEndPoint(
+                    Resolve(array[0]),
+                    int.Parse(array[1]));
+            }
+
+            foreach (var e in Environment.GetEnvironmentVariables())
+            {
+                var entry = (System.Collections.DictionaryEntry)e;
+                var value = (string)entry.Value;
+                switch ((string)entry.Key)
+                {
+                    case "peers":
+                        config.InitialEndpoints = value.Split(';')
+                            .Select(x => x.Trim())
+                            .Where(x => !string.IsNullOrEmpty(x))
+                            .Select(Parse).ToArray();
+                        break;
+                    case "mining":
+                        config.Mining = bool.Parse(value);
+                        break;
+                }
             }
 
             try
