@@ -27,8 +27,15 @@ namespace MinChain
             var array = hexString.Split(':');
 
             return new IPEndPoint(
-                IPAddress.Parse(array[0]),
+                Resolve(array[0]),
                 int.Parse(array[1]));
+        }
+
+        static IPAddress Resolve(string hostNameOrAddress)
+        {
+            return
+                IPAddress.TryParse(hostNameOrAddress, out var addr) ? addr :
+                Dns.GetHostAddresses(hostNameOrAddress)[0];
         }
 
         public override bool CanConvert(Type objectType) =>
