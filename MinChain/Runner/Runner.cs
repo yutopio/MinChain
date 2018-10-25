@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using static MessagePack.MessagePackSerializer;
 
@@ -87,9 +88,14 @@ namespace MinChain
                 webHost.RunAsync();
             }
 
-            ReadConsole();
-
-            connectionManager.Dispose();
+            try
+            {
+                Thread.Sleep(Timeout.Infinite);
+            }
+            finally
+            {
+                connectionManager.Dispose();
+            }
         }
 
         void ReadConsole()
