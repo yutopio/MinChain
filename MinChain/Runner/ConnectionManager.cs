@@ -95,34 +95,45 @@ namespace MinChain
                         continue;
                     }
 
-                    AddPeer(peer);
+                    var readLoop = AddPeer(peer);
                 }
             }
 
             listener.Stop();
         }
 
-        public async Task ConnectToAsync(IPEndPoint endpoint)
+        public async Task ConnectToAsync(
+            IPEndPoint endpoint, bool autoReconnect = false)
         {
             var cl = new TcpClient(AddressFamily.InterNetwork);
             try { await cl.ConnectAsync(endpoint.Address, endpoint.Port); }
             catch (SocketException exp)
             {
                 logger.LogInformation(
-                    $"Failed to connect to {endpoint}.  Retry in 30 seconds.",
+                    $"Failed to connect to {endpoint}." +
+                    (autoReconnect ? "  Retry in 30 seconds." : ""),
                     exp);
 
-                // Create another task to retry.
-                var ignored = Task.Delay(TimeSpan.FromSeconds(30))
-                    .ContinueWith(_ => ConnectToAsync(endpoint));
+                if (autoReconnect)
+                {
+                    // Create another task to retry.
+                    var ignored = Task.Delay(TimeSpan.FromSeconds(30))
+                        .ContinueWith(_ => ConnectToAsync(endpoint, true));
+                }
 
                 return;
             }
 
-            AddPeer(cl);
+            var readLoop = AddPeer(cl);
+            if (autoReconnect)
+            {
+                // Retry immediately if read loop exited (disconnected).
+                var ignored = readLoop
+                    .ContinueWith(_ => ConnectToAsync(endpoint, true));
+            }
         }
 
-        void AddPeer(TcpClient peer)
+        Task AddPeer(TcpClient peer)
         {
             var connectionInfo = new ConnectionInfo(peer);
 
@@ -133,7 +144,7 @@ namespace MinChain
                 peers.Add(connectionInfo);
             }
 
-            Task.Run(async () =>
+            return Task.Run(async () =>
             {
                 NewConnectionEstablished(id);
                 await ReadLoop(connectionInfo, id);

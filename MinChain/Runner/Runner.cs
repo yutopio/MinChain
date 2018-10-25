@@ -52,7 +52,7 @@ namespace MinChain
             var t = Task.Run(async () =>
             {
                 foreach (var ep in config.InitialEndpoints)
-                    await connectionManager.ConnectToAsync(ep);
+                    await connectionManager.ConnectToAsync(ep, true);
             });
 
             if (config.Mining)
