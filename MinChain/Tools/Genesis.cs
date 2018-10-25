@@ -10,7 +10,7 @@ namespace MinChain
     public class Genesis
     {
         public static ByteString EmptyHash = ByteString.CopyFrom(new byte[32]);
-        public static double Difficulty = 2e-6;
+        public static double Difficulty = 3e-4;
 
         public static void Exec(string[] args)
         {

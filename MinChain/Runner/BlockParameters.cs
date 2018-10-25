@@ -13,9 +13,9 @@ namespace MinChain
                 1000000ul >> (height / 100);
         }
 
-        public const int BlocksToConsiderDifficulty = 3;
+        public const int BlocksToConsiderDifficulty = 10;
         public static readonly TimeSpan BlockInterval =
-            TimeSpan.FromSeconds(30);
+            TimeSpan.FromSeconds(2);
 
         public static double GetNextDifficulty(
             IEnumerable<Block> pastBlocks)

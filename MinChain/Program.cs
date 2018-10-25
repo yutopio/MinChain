@@ -28,7 +28,7 @@ namespace MinChain
 
         public static void Main(string[] args)
         {
-            Logging.Factory.AddConsole(LogLevel.Debug);
+            Logging.Factory.AddConsole(LogLevel.Information);
 
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {

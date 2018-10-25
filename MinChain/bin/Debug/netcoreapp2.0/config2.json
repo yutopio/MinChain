@@ -1,0 +1,12 @@
+{
+  "listen": "0.0.0.0:9334",
+  "peers": [
+//    "127.0.0.1:9333"
+  ],
+  "apiport": 8081,
+  "keypair": "key2.json",
+  "genesis": "genesis.bin",
+  "storage": "blocks2",
+  "mining_dop": 4,
+  "mining": true
+}
