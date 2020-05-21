@@ -200,7 +200,7 @@ namespace MinChain
                     InventoryManager.MemoryPool.Add(tx.Id, tx.Body);
             }
 
-            foreach (var tx in block.ParsedTransactions)
+            foreach (var tx in block.ParsedTransactions.Reverse())
             {
                 tx.ExecInfo.RedeemedOutputs.ForEach(x => Utxos.Add(x));
                 tx.ExecInfo.GeneratedOutputs.ForEach(x => Utxos.Remove(x));
